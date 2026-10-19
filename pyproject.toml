@@ -1,0 +1,54 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "voicememos"
+dynamic = ["version"]
+description = "Read the Apple Voice Memos library: find recordings, list them and extract the transcripts iOS already made."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kevin Lappe" }]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+lint = ["ruff", "mypy"]
+
+[project.scripts]
+voicememos = "voicememos.cli:main"
+
+[project.urls]
+Repository = "https://github.com/klappe-pm/voicememos"
+
+[tool.hatch.version]
+path = "voicememos/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["voicememos"]
+
+[tool.hatch.build.targets.sdist]
+include = ["voicememos", "tests", "README.md", "LICENSE", "pyproject.toml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["voicememos"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["voicememos"]

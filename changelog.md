@@ -1,0 +1,18 @@
+# changelog
+
+All notable changes to this project are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## unreleased
+
+### added
+
+- Package scaffold: `pyproject.toml` with the hatchling build backend, no runtime dependencies and the `voicememos` console script.
+- Library discovery, layer 1: `probe_library` and `probe_path` report each known path as `missing`, `readable`, `blocked` or `empty`, so a folder that exists but cannot be listed is never reported as found. `find_library` returns only a readable folder.
+- Library discovery, layer 2: `spotlight_search` asks `mdfind` for candidate folders. It runs only on macOS and only when `find_library` is called with `spotlight=True` or a command is given `--spotlight`.
+- `Recording`, `iter_recordings`, `read_transcript` and `content_hash`, with a standard library reader for the MP4 boxes that carry the duration (`mvhd`) and the iOS transcript (`tsrp`), and for the transcript in a `.composition` folder's `manifest.plist`.
+- The `voicememos` command with `probe`, `list` and `show`, each with `--json`.
+- Documentation in two trees arranged by Diátaxis quadrant: `docs/` for people who use voicememos and `developer-docs/` for people who change it, including an explanation of where macOS keeps Voice Memos and why Full Disk Access matters, and a reference for the `tsrp` and plist formats that marks what is inferred.
+- Repository documents: `README.md`, `contributing.md`, `security.md` and `support.md`.
+
+- Hardening against hostile files, with regression tests in `tests/test_hardening.py`: every file is opened without following symlinks or blocking on a FIFO; MP4 walking is lazy and bounded (10,000 boxes, 8 levels, a 64 MiB and 1,000 hit cap on the byte scan); the manifest search is iterative with a depth limit of 32 and a budget of 100,000 values, and visits shared values once; non finite and oversized durations are ignored and JSON output forbids NaN; dates outside the supported range no longer raise; a recording that cannot be read is skipped with a warning instead of aborting the run; text from files is escaped before it reaches a terminal; `list` keeps no transcript text; `mdfind` is called by absolute path. [security model](docs/explanation/security-model.md) states each limit.
+- A file system fallback for the recording date that reads `st_birthtime` with `getattr` and falls back to the modification time, because the attribute exists on macOS but not on Linux.
