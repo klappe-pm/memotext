@@ -1731,3 +1731,133 @@ class TestEveryInvisibleOrUndefinedCodePoint:
     def test_assigned_letters_marks_and_symbols_are_left_alone(self) -> None:
         text = "A é 日本 ß ́ ☃ € ‰ Ω ๑ ، ◌"
         assert printable(text) == text
+
+
+# emoji keep the selector and the joiner that make them, and nothing else does
+
+ZWJ = "‍"
+VS15 = "︎"
+VS16 = "️"
+
+
+class TestEmojiSequences:
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "❤️",  # heart, VS16
+            "☃︎",  # snowman, VS15 (text presentation)
+            "™️",  # trade mark sign, VS16
+            "👨‍👩‍👧",  # family: man, ZWJ, woman, ZWJ, girl
+            "🏃‍♀️",  # runner, ZWJ, female sign, VS16
+            "❤️‍🔥",  # heart, VS16, ZWJ, fire
+            "👍🏽",  # thumbs up with a skin tone, no selector
+            "1️⃣",  # keycap one
+            "#️⃣",  # keycap number sign
+            "🇯🇵",  # flag, two regional indicators
+            "I ❤️ 日本 👨‍👩‍👧 ok",
+        ],
+        ids=lambda s: "-".join(f"{ord(c):x}" for c in s)[:40],
+    )
+    def test_a_real_emoji_prints_unchanged(self, text: str) -> None:
+        assert printable(text) == text
+
+    @pytest.mark.parametrize(
+        ("text", "expected"),
+        [
+            (VS16 + "abc", "\\ufe0fabc"),  # leading
+            ("a" + VS16, "a\\ufe0f"),  # after a non-emoji
+            ("日" + VS16, "日\\ufe0f"),
+            ("1" + VS16, "1\\ufe0f"),  # a digit without the keycap
+            ("❤" + VS16 + VS16, "❤" + VS16 + "\\ufe0f"),  # repeated
+            ("❤" + VS16 + VS15, "❤" + VS16 + "\\ufe0e"),
+            ("❤" + "︀", "❤\\ufe00"),  # other selectors are never kept
+            ("❤" + "\U000e0100", "❤\\U000e0100"),
+            ("᠋", "\\u180b"),
+            (ZWJ + "❤", "\\u200d❤"),  # leading
+            ("❤" + ZWJ, "❤\\u200d"),  # trailing
+            ("a" + ZWJ + "b", "a\\u200db"),
+            ("a" + ZWJ + "❤", "a\\u200d❤"),  # next to a non-emoji
+            ("❤" + ZWJ + "a", "❤\\u200da"),
+            ("❤" + ZWJ + ZWJ + "🔥", "❤\\u200d\\u200d🔥"),  # repeated
+            ("❤" + VS16 + VS16 + ZWJ + "🔥", "❤" + VS16 + "\\ufe0f\\u200d🔥"),
+            (ZWJ, "\\u200d"),
+            (VS16, "\\ufe0f"),
+        ],
+        ids=lambda v: "-".join(f"{ord(c):x}" for c in v)[:40] if isinstance(v, str) else None,
+    )
+    def test_an_unattached_selector_or_joiner_is_escaped(self, text: str, expected: str) -> None:
+        assert printable(text) == expected
+
+    def test_nothing_hides_in_a_run_of_selectors(self) -> None:
+        # One selector may follow an emoji. A longer run is how a payload would be carried.
+        payload = "❤" + "".join(VS16 if bit else VS15 for bit in (1, 0, 1, 1, 0, 0, 1, 0))
+        out = printable(payload)
+        assert out.count("\\ufe0") == 7
+        assert out[0] == "❤"
+        assert sum(ch in {VS15, VS16} for ch in out) == 1
+
+    def test_the_other_unsafe_characters_are_still_escaped_inside_an_emoji_run(self) -> None:
+        assert printable("❤️‮❤️") == "❤️\\u202e❤️"
+        assert printable("👨" + ZWJ + "⁠" + "👩") == "👨\\u200d\\u2060👩"
+        assert printable("❤️\x1b❤️") == "❤️\\x1b❤️"
+
+    def test_keep_newlines_still_applies_in_text_with_emoji(self) -> None:
+        assert printable("❤️\n👨‍👩‍👧\r", keep_newlines=True) == "❤️\n👨‍👩‍👧\\r"
+
+    def test_show_prints_an_emoji_title_unchanged(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / f"{STEM}.m4a")
+        write_manifest(library / f"{STEM}.composition", {"title": "I ❤️ 👨‍👩‍👧"})
+        code, out, err = run(capsys, "show", STEM, "--library", str(library))
+        assert code == 0, err
+        assert "title: I ❤️ 👨‍👩‍👧\n" in out
+
+
+# the check costs little on text that needs no escape
+
+
+def reference_before_the_invisible_character_fix(text: str) -> str:
+    """The per character loop `printable` used before it escaped invisible characters."""
+    out = []
+    for ch in text:
+        code = ord(ch)
+        if code < 0x20 or 0x7F <= code <= 0x9F or code in _OLD_FORMAT_CHARS:
+            out.append(f"\\u{code:04x}")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+_OLD_FORMAT_CHARS = frozenset(
+    {0x200B, 0x200C, 0x200D, 0x200E, 0x200F, 0x2028, 0x2029}
+    | set(range(0x202A, 0x202F))
+    | set(range(0x2066, 0x206A))
+    | {0xFEFF}
+)
+
+
+class TestEscapingSpeed:
+    def test_cjk_text_costs_no_more_than_one_and_a_half_times_the_old_loop(self) -> None:
+        text = "日本語のメモ漢字" * 250_000
+        timings = {}
+        for name, function in (
+            ("old", reference_before_the_invisible_character_fix),
+            ("new", printable),
+        ):
+            best = float("inf")
+            for _ in range(3):
+                start = time.perf_counter()
+                result = function(text)
+                best = min(best, time.perf_counter() - start)
+            assert result == text
+            timings[name] = best
+        assert timings["new"] <= 1.5 * timings["old"], timings
+
+    def test_text_with_one_joiner_is_not_scanned_character_by_character(self) -> None:
+        text = "日本語のメモ漢字" * 250_000 + "❤" + ZWJ + "🔥"
+        start = time.perf_counter()
+        out = printable(text)
+        elapsed = time.perf_counter() - start
+        assert out == text
+        assert elapsed < 1.0
