@@ -75,7 +75,7 @@ Titles, transcripts, file names and error messages come from files, and a termin
 - A lone surrogate, which cannot be encoded, is printed as `?`.
 - Table cells in `list` and `probe` are escaped before they are laid out, so a cell never contains a line break and cannot forge another row.
 - In `show`, every field is escaped. The transcript keeps its line feeds so it stays readable; every other control character in it is still escaped.
-- Error messages, warnings and paths are escaped the same way.
+- Error messages, warnings and paths are escaped the same way. That includes the default `RecordingSkippedWarning` message that `iter_recordings` issues, so a file name with an escape sequence or a right-to-left override cannot reach standard error through Python's warning machinery.
 - `--json` output is ASCII only, with every non ASCII character written as a `\u` escape.
 
 A backslash in the source text is not escaped, so a title that literally contains `\x1b` looks the same as one that contains the escape character. Use `--json` when that difference matters.

@@ -21,6 +21,7 @@ from voicememos.errors import (
 )
 from voicememos.mp4 import read_duration_seconds
 from voicememos.safeio import ABSENT_ERRORS, is_real_dir, open_regular
+from voicememos.textsafe import printable
 from voicememos.transcripts import (
     SOURCE_PLIST,
     SOURCE_TSRP,
@@ -292,8 +293,11 @@ def iter_recordings(
                 if on_skip is not None:
                     on_skip(audio, exc)
                 else:
+                    # The name and the reason come from files, so both are escaped before they can
+                    # reach a terminal through the warning.
+                    reason = exc.strerror or type(exc).__name__
                     warnings.warn(
-                        f"skipped {audio}: {exc.strerror or type(exc).__name__}",
+                        f"skipped {printable(str(audio))}: {printable(reason)}",
                         RecordingSkippedWarning,
                         stacklevel=2,
                     )

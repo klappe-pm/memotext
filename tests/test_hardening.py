@@ -884,3 +884,29 @@ class TestInvisibleCharacters:
             assert code == 0, err
             assert not any(0xE0000 <= ord(ch) <= 0xE007F for ch in out + err)
             assert "\\U000e0069" in out
+
+
+# the default skip warning is safe to print
+
+
+class TestSkipWarningText:
+    def test_the_default_message_escapes_the_file_name_and_the_reason(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        name = "evil\x1b[2J‮name.m4a"
+        try:
+            make_m4a(library / name)
+        except OSError:
+            pytest.skip("the file system does not allow these characters in a name")
+
+        def refuse(*args: object, **kwargs: object) -> object:
+            raise PermissionError(1, "denied\x1b]0;pwned‮")
+
+        monkeypatch.setattr(recording_module, "_load", refuse)
+        with pytest.warns(RecordingSkippedWarning) as caught:
+            assert list(iter_recordings(library)) == []
+        message = str(caught[0].message)
+        assert "\x1b" not in message
+        assert "‮" not in message
+        assert "\\x1b" in message
+        assert "\\u202e" in message
