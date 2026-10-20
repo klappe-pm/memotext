@@ -20,7 +20,10 @@ All notable changes to this project are documented in this file. The format foll
 
 - The documentation is one tree under `docs/`. The contributor pages moved there from `developer-docs/`, `release.md` is now `cut-a-release.md` and `api.md` is now `python-api.md`. Headings use Title Case, and the community files have uppercase names: `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md` and `SUPPORT.md`.
 - The README follows the Stratarc layout: a banner, a badge row, a navigation row, a table of what changes with Voicememos, and sections in a fixed order. Every link in it is absolute so that it works on PyPI.
-- `docs/documentation-guide/` is no longer tracked and is listed in `.gitignore`.
+- The `test` extra requires `pytest>=9.0.3` and `pytest-cov>=7`. Pytest releases before 9.0.3 carry CVE-2025-71176, and Pygments releases before 2.20.0, which pytest pulls in, carry CVE-2026-4539. The extras are exactly `test` and `lint`.
+- The build requirement is `hatchling>=1.27,<2`, the sdist includes only anchored paths, and the metadata gains keywords, trove classifiers (Alpha, macOS and Linux, Python 3.11 to 3.13, typed), and the Homepage, Documentation, Changelog and Issues URLs.
+- Ruff checks the rule sets E, F, I, UP, B, SIM, W, S and RUF.
+- The release workflow is three jobs. Build installs only hash pinned tools, checks that the tagged commit is on `main` and that the tag matches the version, and writes checksums to the job summary. Test installs hash pinned tools and the built wheel and runs the suite against it. Publish needs both and is the only job that can request an identity token. Every action is pinned to a full commit of its current major release, and the lock files in `requirements/` are generated with `pip-compile --generate-hashes`.
 
 ### Fixed
 

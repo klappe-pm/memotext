@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -11,17 +11,36 @@ requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Kevin Lappe" }]
+keywords = ["voice-memos", "apple", "macos", "ios", "transcript", "m4a", "audio", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
 dependencies = []
 
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov"]
+test = ["pytest>=9.0.3", "pytest-cov>=7"]
 lint = ["ruff", "mypy"]
 
 [project.scripts]
 voicememos = "voicememos.cli:main"
 
 [project.urls]
+Homepage = "https://github.com/klappe-pm/voicememos"
 Repository = "https://github.com/klappe-pm/voicememos"
+Documentation = "https://github.com/klappe-pm/voicememos/blob/main/docs/README.md"
+Changelog = "https://github.com/klappe-pm/voicememos/blob/main/CHANGELOG.md"
+Issues = "https://github.com/klappe-pm/voicememos/issues"
 
 [tool.hatch.version]
 path = "voicememos/__init__.py"
@@ -30,10 +49,13 @@ path = "voicememos/__init__.py"
 packages = ["voicememos"]
 
 [tool.hatch.build.targets.sdist]
-include = ["voicememos", "tests", "README.md", "LICENSE", "pyproject.toml"]
+include = ["/voicememos", "/tests", "/README.md", "/LICENSE", "/pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "repo_only: reads repository files that the source distribution omits (.github, docs, the community files); skipped when they are missing",
+]
 
 [tool.coverage.run]
 source = ["voicememos"]
@@ -46,7 +68,10 @@ line-length = 100
 target-version = "py311"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B"]
+select = ["E", "F", "I", "UP", "B", "SIM", "W", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
 
 [tool.mypy]
 python_version = "3.11"

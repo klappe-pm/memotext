@@ -124,7 +124,8 @@ def _run_mdfind(args: list[str]) -> str:
     if sys.platform != "darwin" or not os.access(MDFIND, os.X_OK):
         return ""
     try:
-        result = subprocess.run(
+        # The program is a fixed absolute path and the arguments are fixed queries, never input.
+        result = subprocess.run(  # noqa: S603
             [MDFIND, *args],
             capture_output=True,
             text=True,

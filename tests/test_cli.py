@@ -81,7 +81,7 @@ class TestProbe:
         assert code == 0
         assert data["library"] == str(populated)
         assert data["library_source"] == "known-path"
-        assert [p["state"] for p in data["paths"]][0] == "readable"
+        assert data["paths"][0]["state"] == "readable"
         assert len(data["paths"]) == len(discovery.KNOWN_PATHS)
 
     def test_json_when_nothing_is_found(self, capsys: pytest.CaptureFixture[str]) -> None:

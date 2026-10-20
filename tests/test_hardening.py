@@ -1037,9 +1037,8 @@ class TestContentHashWalk:
         composition = library / "deep.composition"
         with deep_folder(composition, 1100):
             rec = one_recording(library)
-            with deadline(10.0):
-                with pytest.raises(CompositionLimitError):
-                    content_hash(rec)
+            with deadline(10.0), pytest.raises(CompositionLimitError):
+                content_hash(rec)
 
     def test_the_documented_error_is_a_voicememos_error(self) -> None:
         assert issubclass(CompositionLimitError, VoiceMemosError)
