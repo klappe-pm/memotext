@@ -1196,3 +1196,60 @@ class TestUndecodableOutput:
             main(["--version"])
         assert ("stdout", "backslashreplace") in seen
         assert ("stderr", "backslashreplace") in seen
+
+
+# listing does not decode transcripts it will discard
+
+
+class TestListDoesNotDecodePayloads:
+    def test_transcripts_false_never_decodes_the_tsrp_payload(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "a.m4a", transcript="long words")
+        decoded: list[bytes] = []
+        real = transcripts.transcript_from_tsrp
+
+        def spy(payload: bytes) -> str | None:
+            decoded.append(payload)
+            return real(payload)
+
+        monkeypatch.setattr(transcripts, "transcript_from_tsrp", spy)
+        lazy = next(iter_recordings(library, transcripts=False))
+        assert decoded == []
+        assert lazy.transcript_source == "tsrp"
+        assert lazy.transcript_text is None
+        full = next(iter_recordings(library))
+        assert len(decoded) == 1
+        assert full.transcript_text == "long words"
+
+    def test_the_list_command_does_not_decode_payloads(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / "a.m4a", transcript="long words")
+
+        def refuse(payload: bytes) -> str | None:
+            raise AssertionError("list must not decode a transcript payload")
+
+        monkeypatch.setattr(transcripts, "transcript_from_tsrp", refuse)
+        code, out, _ = run(capsys, "list", "--library", str(library))
+        assert code == 0
+        assert "tsrp" in out
+
+    def test_a_blank_payload_is_not_reported_as_a_transcript(self, library: Path) -> None:
+        make_m4a(library / "a.m4a", tsrp=b"   ")
+        assert next(iter_recordings(library, transcripts=False)).transcript_source is None
+
+    def test_the_manifest_is_still_the_source_when_the_audio_has_none(self, library: Path) -> None:
+        make_m4a(library / "a.m4a")
+        write_manifest(library / "a.composition", {"transcript": "from the plist"})
+        assert next(iter_recordings(library, transcripts=False)).transcript_source == "plist"
+
+    def test_show_reports_the_source_it_actually_decoded(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / "a.m4a", tsrp=b"not json at all")
+        write_manifest(library / "a.composition", {"transcript": "fallback words"})
+        code, out, _ = run(capsys, "show", "a", "--library", str(library))
+        assert code == 0
+        assert "transcript source: plist" in out
+        assert "fallback words" in out

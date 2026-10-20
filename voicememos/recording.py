@@ -20,7 +20,7 @@ from voicememos.errors import (
     LibraryNotFoundError,
     RecordingSkippedWarning,
 )
-from voicememos.mp4 import read_duration_seconds
+from voicememos.mp4 import read_duration_seconds, read_tsrp_payload
 from voicememos.safeio import (
     ABSENT_ERRORS,
     DirRef,
@@ -217,6 +217,21 @@ def _read_transcript(audio_path: Path, manifest: dict[str, Any] | None) -> Trans
     return None
 
 
+def _detect_source(audio_path: Path, manifest: dict[str, Any] | None) -> str | None:
+    """Say where a transcript lives without decoding the `tsrp` payload.
+
+    A non empty `tsrp` box counts as a transcript in the audio file. Whether its JSON holds text
+    is learned only by decoding it, which `read_transcript` does; so for a damaged payload this
+    names `tsrp` where `read_transcript` falls back to the manifest or finds nothing.
+    """
+    payload = read_tsrp_payload(audio_path)
+    if payload is not None and payload.strip():
+        return SOURCE_TSRP
+    if manifest is not None and transcript_from_manifest(manifest):
+        return SOURCE_PLIST
+    return None
+
+
 def _load(audio_path: Path, composition_path: Path | None, *, transcripts: bool) -> Recording:
     stem = audio_path.stem
     manifest = read_manifest(composition_path) if composition_path else None
@@ -225,7 +240,14 @@ def _load(audio_path: Path, composition_path: Path | None, *, transcripts: bool)
     if duration is None:
         duration = read_duration_seconds(audio_path)
     title = _manifest_title(manifest) or _fallback_title(recorded_at)
-    transcript = _read_transcript(audio_path, manifest)
+    if transcripts:
+        transcript = _read_transcript(audio_path, manifest)
+        text = transcript.text if transcript else None
+        source = transcript.source if transcript else None
+    else:
+        # The text is never decoded or kept, so a long list holds and parses no transcripts.
+        text = None
+        source = _detect_source(audio_path, manifest)
     return Recording(
         id=stem,
         audio_path=audio_path,
@@ -233,9 +255,8 @@ def _load(audio_path: Path, composition_path: Path | None, *, transcripts: bool)
         recorded_at=recorded_at,
         duration_seconds=duration,
         title=title,
-        # The text is dropped here, not kept and hidden, so a long list holds no transcripts.
-        transcript_text=transcript.text if transcript and transcripts else None,
-        transcript_source=transcript.source if transcript else None,
+        transcript_text=text,
+        transcript_source=source,
     )
 
 
@@ -279,7 +300,9 @@ def iter_recordings(
     `RecordingSkippedWarning` is issued.
 
     With `transcripts=False` each recording's `transcript_text` is None to save memory, while
-    `transcript_source` still says where a transcript was found.
+    `transcript_source` still says where a transcript was found. The `tsrp` payload is not
+    decoded in that case, so a non empty `tsrp` box is reported as `"tsrp"` even if its JSON turns
+    out to hold no text; `read_transcript` decodes it and gives the true source.
     """
     library = Path(library_path).expanduser()
     audio_files = _list_audio(library)

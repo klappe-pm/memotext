@@ -54,7 +54,7 @@ How `recorded_at`, `duration_seconds` and `title` are chosen is described in [fi
 
 Lists the folder immediately and returns an iterator over its recordings in file name order. A leading `~` is expanded. Only regular files ending in `.m4a` (any case) are recordings; each is paired with `<id>.composition` when that is a real folder. A symlink is never a recording and a symlinked `.composition` folder counts as absent.
 
-With `transcripts=False`, `transcript_text` is None for every recording to save memory, while `transcript_source` still says where a transcript was found. The `list` command uses this.
+With `transcripts=False`, `transcript_text` is None for every recording to save memory, while `transcript_source` still says where a transcript was found. The `tsrp` payload is not decoded in this mode, so a non empty `tsrp` box is reported as `"tsrp"` even if its JSON turns out to hold no text; `read_transcript` decodes it and gives the true source. The `list` command uses this.
 
 Raises `LibraryNotFoundError` when the folder is missing or is not a directory, and `LibraryBlockedError` when it exists but cannot be listed. Both are raised by the call itself, not by iterating. A malformed manifest or audio file does not raise; the affected fields are None or fall back.
 

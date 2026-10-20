@@ -207,7 +207,12 @@ def _cmd_show(args: argparse.Namespace) -> int:
         list(iter_recordings(library, transcripts=False, on_skip=_warn_skipped)), args.id
     )
     transcript = read_transcript(found)
-    recording = replace(found, transcript_text=transcript.text if transcript else None)
+    recording = replace(
+        found,
+        transcript_text=transcript.text if transcript else None,
+        # The listing only detected the source; reading the transcript is what settles it.
+        transcript_source=transcript.source if transcript else None,
+    )
     if args.json:
         print(_dump(recording.to_dict()))
         return EXIT_OK
