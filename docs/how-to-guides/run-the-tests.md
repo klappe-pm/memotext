@@ -5,15 +5,15 @@ This guide lists every check a change must pass and how to run it. It assumes th
 ## Test Suite
 
 ```bash
-/path/to/voicememos/.venv/bin/python -m pytest /path/to/voicememos/tests
+/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests
 ```
 
-Install the `test` and `lint` extras first: `pip install -e '/path/to/voicememos[test,lint]'`. `pytest` and `pytest-cov` are the `test` extra, with `pytest` at 9.0.3 or newer because earlier releases carry CVE-2025-71176, and `ruff` and `mypy` are the `lint` extra.
+Install the `test` and `lint` extras first: `pip install -e '/path/to/voicememos[test,lint]'`. `pytest` and `pytest-cov` are the `test` extra, with `pytest` at 9.0.3 or newer because earlier releases carry CVE-2025-71176, and `ruff` and `mypy` are the `lint` extra. The `-P` option stops Python from putting the current directory on the import path, so the commands work from any directory, including the clone of another package whose `tests` folder would otherwise be imported instead.
 
 ## Coverage
 
 ```bash
-/path/to/voicememos/.venv/bin/python -m pytest /path/to/voicememos/tests --cov=voicememos --cov-report=term-missing
+/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests --cov=voicememos --cov-report=term-missing
 ```
 
 The target is at least 90 percent line coverage of the package. The report lists the lines that no test reached. Report the real number in the pull request.
@@ -73,7 +73,7 @@ cd /path/to/voicememos && python3 -m pip install fonttools && python3 scripts/ma
 To run one file or one test:
 
 ```bash
-/path/to/voicememos/.venv/bin/python -m pytest /path/to/voicememos/tests/test_discovery.py -k blocked
+/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests/test_discovery.py -k blocked
 ```
 
 ## The Permission Denied Tests
@@ -81,7 +81,7 @@ To run one file or one test:
 The blocked folder case is tested twice. One test patches `os.scandir` to raise `PermissionError`, so it runs everywhere, including as root. The other makes a real directory unreadable with `chmod 000` and is skipped when you run as root or on Windows, because root can still list such a directory. To see it run, use an ordinary user account. Skips are listed with their reasons:
 
 ```bash
-/path/to/voicememos/.venv/bin/python -m pytest /path/to/voicememos/tests -rs
+/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests -rs
 ```
 
 ## Other Python Versions
@@ -89,7 +89,7 @@ The blocked folder case is tested twice. One test patches `os.scandir` to raise 
 The package supports Python 3.11 and newer. To check the oldest supported version, create a virtual environment with it and run the same commands:
 
 ```bash
-uv venv --python 3.11 /path/to/voicememos/.venv311 && uv pip install --python /path/to/voicememos/.venv311/bin/python -e '/path/to/voicememos[test]' && /path/to/voicememos/.venv311/bin/python -m pytest /path/to/voicememos/tests
+uv venv --python 3.11 /path/to/voicememos/.venv311 && uv pip install --python /path/to/voicememos/.venv311/bin/python -e '/path/to/voicememos[test]' && /path/to/voicememos/.venv311/bin/python -P -m pytest /path/to/voicememos/tests
 ```
 
 ## Timezone Tests

@@ -21,7 +21,7 @@ This installs Voicememos as an editable package with the `test` extra (`pytest` 
 ## Run the Tests
 
 ```bash
-/path/to/voicememos/.venv/bin/python -m pytest /path/to/voicememos/tests
+/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests
 ```
 
 The suite finishes in a couple of seconds. Skips are normal: tests that need a non-root user to make a directory unreadable skip when you run as root, and each says why. See [Run the Tests](../how-to-guides/run-the-tests.md) for the other checks.
@@ -41,7 +41,7 @@ Update the page in `docs/` that describes the behaviour. A page goes in the fold
 ## Check It
 
 ```bash
-/path/to/voicememos/.venv/bin/python -m pytest /path/to/voicememos/tests --cov=voicememos --cov-report=term-missing
+/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests --cov=voicememos --cov-report=term-missing
 ```
 
 ```bash
