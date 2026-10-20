@@ -1,8 +1,8 @@
-# library-states
+# Library States
 
 This page describes how voicememos decides whether a Voice Memos folder is usable: the known folder paths, the four states a path can be in, how a path is probed, and the optional Spotlight search. It is the reference for layer 1 (the known paths) and layer 2 (Spotlight) of folder discovery. There are no interactive layers: nothing here prompts, opens System Settings or changes a permission. The reasoning is in [where macOS keeps Voice Memos](../explanation/where-macos-keeps-voice-memos.md).
 
-## known-paths
+## Known Paths
 
 `KNOWN_PATHS`, in order of preference. Each is relative to the user's home directory.
 
@@ -16,7 +16,7 @@ This page describes how voicememos decides whether a Voice Memos folder is usabl
 
 The list was carried over from the code this package was extracted from. It has not been checked against a real Mac while writing this package.
 
-## the-four-states
+## The Four States
 
 | state | condition | `recording_count` | `detail` |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ The list was carried over from the code this package was extracted from. It has 
 
 A path whose parent is missing is `missing`. A path whose parent cannot be searched is `blocked`.
 
-## how-a-path-is-probed
+## How a Path Is Probed
 
 The path is expanded (`~` becomes the home directory) and the directory is listed with `os.scandir`. It is not tested with `exists`. Listing is the operation that fails under a missing permission, so using it is what keeps a blocked folder from being reported as missing or found.
 
@@ -37,11 +37,11 @@ The path is expanded (`~` becomes the home directory) and the directory is liste
 
 A permission error that appears part way through the listing is also `blocked`.
 
-## what-find-library-accepts
+## What Find Library Accepts
 
 `find_library` accepts only `readable`. A `blocked` path is never returned, and neither is an `empty` one. To learn why nothing was found, call `probe_library`.
 
-## spotlight
+## Spotlight
 
 `spotlight_search` runs two queries with `/usr/bin/mdfind`, by that absolute path and not through `PATH`, and returns the parent folder of every hit, once each, in the order found.
 

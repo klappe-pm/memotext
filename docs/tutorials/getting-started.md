@@ -1,14 +1,14 @@
-# getting-started
+# Getting Started
 
 This tutorial takes you from an install to reading a transcript from your own Voice Memos library on a Mac. You install the command, check which folders it can see, list your recordings, show one with its transcript, and then do the same from Python. It follows one path and explains only what that path needs; the [reference](../reference/README.md) pages hold the detail and the [explanation](../explanation/where-macos-keeps-voice-memos.md) pages hold the reasons.
 
-## what-you-need
+## What You Need
 
 - A Mac with the Voice Memos app and at least one recording that has a transcript.
 - Python 3.11 or newer and `pipx`.
 - A terminal. If it is your first time reading the Voice Memos folder, expect one permission step below.
 
-## install
+## Install
 
 Until there is a release, install from the repository.
 
@@ -22,7 +22,7 @@ Check the command runs:
 voicememos --version
 ```
 
-## probe-the-library
+## Probe the Library
 
 `probe` tests each place Voice Memos has been known to keep recordings and says what it found.
 
@@ -34,7 +34,7 @@ Each line shows a state, a count and a path. A folder you can use is `readable`.
 
 The last line names the folder the other commands will read, for example `library: ~/Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings` (with your home folder written out in full).
 
-## list-recordings
+## List Recordings
 
 ```bash
 voicememos list
@@ -42,7 +42,7 @@ voicememos list
 
 You get one row per recording, newest first, with its id, when it was recorded, its duration, where its transcript came from (`tsrp`, `plist` or `none`) and its title. The id is the file name without `.m4a`.
 
-## show-one-recording
+## Show One Recording
 
 Copy an id from the list. Ids contain a space, so quote them. A start of the id is enough if it matches only one recording.
 
@@ -52,7 +52,7 @@ voicememos show "20250115 143022-ABCD1234"
 
 The command prints the title, the dates and paths, and then the transcript text.
 
-## use-json
+## Use JSON
 
 Add `--json` to `list` or `show` to get output a script can read.
 
@@ -60,7 +60,7 @@ Add `--json` to `list` or `show` to get output a script can read.
 voicememos list --json
 ```
 
-## use-it-from-python
+## Use It from Python
 
 The same steps in Python:
 
@@ -77,8 +77,8 @@ for recording in iter_recordings(library):
         print(recording.transcript_text[:200])
 ```
 
-## where-next
+## Where Next
 
 - [troubleshooting](../how-to-guides/troubleshooting.md) if `probe` finds nothing or a transcript is missing.
 - [read transcripts from python](../how-to-guides/read-transcripts-from-python.md) for change detection and error handling.
-- [cli reference](../reference/cli.md) and [api reference](../reference/api.md) for every option and function.
+- [CLI reference](../reference/cli.md) and [Python API reference](../reference/python-api.md) for every option and function.

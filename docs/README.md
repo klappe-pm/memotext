@@ -1,23 +1,24 @@
-# docs
+# Documentation
 
-Documentation for people who use voicememos: you run the command or import the package to find your Voice Memos recordings, list them and read the transcripts iOS already produced. It is arranged by the four [Diátaxis](https://diataxis.fr/) quadrants, so the folder a page sits in tells you what kind of page it is. If you change voicememos itself, the same shape exists under [developer-docs](../developer-docs/README.md).
+Voicememos reads the Apple Voice Memos library: it finds your recordings, lists them and extracts the transcripts iOS already produced. These pages cover installing and using it, looking things up, and changing the code. They follow the four [Diátaxis](https://diataxis.fr/) quadrants, so the folder a page sits in tells you what kind of page it is.
 
-## tutorials
+## Tutorials
 
-Lessons that take you through a task from start to finish, for someone who has not done it before. Start with [getting started](tutorials/getting-started.md), which goes from an install to listing a recording and reading its transcript. Index: [tutorials](tutorials/README.md).
+Lessons that take you through a task from start to finish. [Getting Started](tutorials/getting-started.md) goes from an install to listing a recording and reading its transcript. [First Contribution](tutorials/first-contribution.md) goes from a fresh clone to a passing test suite and a change ready for review. Index: [Tutorials](tutorials/README.md).
 
-## how-to-guides
+## How-To Guides
 
-Recipes for a specific goal, for someone who already knows the basics and wants the steps. [install](how-to-guides/install.md) covers every install method, [troubleshooting](how-to-guides/troubleshooting.md) matches a symptom to its fix, and [read transcripts from python](how-to-guides/read-transcripts-from-python.md) shows the library calls for a script. Index: [how-to guides](how-to-guides/README.md).
+Recipes for a specific goal, for someone who already knows the basics.
 
-## reference
+- Use: [Install](how-to-guides/install.md), [Read Transcripts from Python](how-to-guides/read-transcripts-from-python.md), [Troubleshooting](how-to-guides/troubleshooting.md).
+- Contribute: [Run the Tests](how-to-guides/run-the-tests.md), [Build a Synthetic Recording](how-to-guides/build-a-synthetic-recording.md), [Cut a Release](how-to-guides/cut-a-release.md).
 
-Lookup pages that describe the machinery as it is, with no instruction attached. [api](reference/api.md) lists every public function, class and exception, [cli](reference/cli.md) lists every command, option, output shape and exit status, [library states](reference/library-states.md) lists the known folders and the four states, and [file formats](reference/file-formats.md) describes the `tsrp` atom and the plist as far as the code understands them, marking what is inferred. Index: [reference](reference/README.md).
+Index: [How-To Guides](how-to-guides/README.md).
 
-## explanation
+## Reference
 
-Discussion that gives background and reasons, for a reader who wants to understand rather than act. [where macOS keeps Voice Memos](explanation/where-macos-keeps-voice-memos.md) explains the folders and why Full Disk Access matters, [design](explanation/design.md) explains the choices behind the package, and [security model](explanation/security-model.md) explains what it reads, what it never does and what it trusts. Index: [explanation](explanation/README.md).
+Lookup pages that describe the machinery as it is. [CLI](reference/cli.md) lists every command, option, output shape and exit status, [Python API](reference/python-api.md) lists every public function, class and exception, [Library States](reference/library-states.md) lists the known folders and the four states, and [File Formats](reference/file-formats.md) describes the `tsrp` atom and the plist as far as the code understands them, marking what is inferred. [Source Layout](reference/source-layout.md) lists each module and [Test Fixtures](reference/test-fixtures.md) describes the synthetic builders. Index: [Reference](reference/README.md).
 
-## documentation-guide
+## Explanation
 
-How this documentation is organised and how to add to it. [documentation guide](documentation-guide/README.md) says which folder a new page belongs in.
+Background and reasons, for a reader who wants to understand rather than act. [Where macOS Keeps Voice Memos](explanation/where-macos-keeps-voice-memos.md) explains the folders and why Full Disk Access matters, [Design](explanation/design.md) explains the choices behind the package, [Security Model](explanation/security-model.md) explains what it reads, what it never does and what it trusts, and [Architecture](explanation/architecture.md) explains how a library folder becomes a list of recordings. Index: [Explanation](explanation/README.md).

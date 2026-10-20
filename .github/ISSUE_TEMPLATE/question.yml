@@ -1,0 +1,15 @@
+name: Question
+description: Ask how to do something with Voicememos.
+labels: ["question"]
+body:
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you are trying to do
+    validations:
+      required: true
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you tried
+      description: Commands and their output as text. Remove anything personal, since recording ids, titles and transcripts often are.

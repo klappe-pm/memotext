@@ -1,8 +1,8 @@
-# read-transcripts-from-python
+# Read Transcripts from Python
 
-This guide shows how to use voicememos from a script: find the library, read every recording, pick out the ones with transcripts, handle a blocked or missing folder, and tell which recordings changed since the last run. It assumes the package is installed and you know basic Python. The full signatures are in the [api reference](../reference/api.md).
+This guide shows how to use voicememos from a script: find the library, read every recording, pick out the ones with transcripts, handle a blocked or missing folder, and tell which recordings changed since the last run. It assumes the package is installed and you know basic Python. The full signatures are in the [Python API reference](../reference/python-api.md).
 
-## find-the-library
+## Find the Library
 
 `find_library` returns the first readable folder, or None. It never returns a folder that exists but cannot be listed.
 
@@ -31,7 +31,7 @@ from voicememos import find_library
 library = find_library(["~/exports/Recordings", "~/Desktop/Recordings"])
 ```
 
-## read-every-recording
+## Read Every Recording
 
 ```python
 from voicememos import iter_recordings
@@ -42,7 +42,7 @@ for recording in iter_recordings(library):
 
 `iter_recordings` lists the folder as soon as you call it, so a missing or blocked folder raises at that line, not on the first loop step.
 
-## handle-errors
+## Handle Errors
 
 ```python
 from voicememos import LibraryBlockedError, LibraryNotFoundError, iter_recordings
@@ -68,7 +68,7 @@ recordings = list(iter_recordings(library, on_skip=lambda path, error: skipped.a
 
 For a long list where you do not need the text, pass `transcripts=False` so no transcript is kept in memory. `transcript_source` is still set.
 
-## select-recordings-with-a-transcript
+## Select Recordings with a Transcript
 
 ```python
 with_text = [r for r in recordings if r.transcript_text]
@@ -77,7 +77,7 @@ from_audio = [r for r in with_text if r.transcript_source == "tsrp"]
 
 `transcript_source` is `"tsrp"` when the text came from the audio file, `"plist"` when it came from the composition manifest, and None when there is no transcript.
 
-## re-read-a-transcript
+## Reread a Transcript
 
 `read_transcript` reads the files again, so it reflects what is on disk now.
 
@@ -89,7 +89,7 @@ if transcript is not None:
     print(transcript.source, transcript.text)
 ```
 
-## detect-changed-recordings
+## Detect Changed Recordings
 
 `content_hash` returns a SHA 256 digest of the audio file and the composition folder. It ignores modification times, so copying a file does not change it. Keep the digests wherever suits your script; voicememos stores nothing.
 

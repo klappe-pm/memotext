@@ -1,8 +1,8 @@
-# build-a-synthetic-recording
+# Build a Synthetic Recording
 
 This guide shows how to make a fixture for a test: an `.m4a` file with a duration and a transcript, and a `.composition` folder with a `manifest.plist`, all built in code. Every fixture in this repository is synthetic. Never commit a real recording, transcript or manifest, and never copy one into a test. The builders are in `tests/synthetic.py`; [test fixtures](../reference/test-fixtures.md) lists them.
 
-## a-recording-with-a-transcript
+## A Recording with a Transcript
 
 ```python
 from pathlib import Path
@@ -17,7 +17,7 @@ def test_example(library: Path) -> None:
 
 `library` is the shared fixture for an empty recordings folder. `make_m4a` writes a minimal MP4: a `ftyp` box, a `moov` box holding a movie header and the `tsrp` atom, and an `mdat` box of filler bytes.
 
-## put-the-atom-somewhere-else
+## Put the Atom Somewhere Else
 
 The `place` argument moves the `tsrp` box, which tests the reader's search:
 
@@ -27,7 +27,7 @@ make_m4a(path, transcript="words", place="meta")
 
 The places are `udta` (the default), `moov`, `meta`, `trak` and `top`.
 
-## write-a-raw-payload
+## Write a Raw Payload
 
 To test malformed or unusual payloads, pass the bytes yourself:
 
@@ -36,7 +36,7 @@ make_m4a(path, tsrp=b"not json")
 make_m4a(path, tsrp=tsrp_payload(runs=["Hello", 0, " world", 1]))
 ```
 
-## build-boxes-by-hand
+## Build Boxes by Hand
 
 For a damaged file, build the bytes and write them:
 
@@ -50,7 +50,7 @@ path.write_bytes(box(b"ftyp", b"M4A ") + struct.pack(">I4s", 3, b"free"))
 
 `box` builds a box with a 32 bit size, and `large_box` builds one with the 64 bit size form.
 
-## write-a-manifest
+## Write a Manifest
 
 `write_manifest(folder, data)` creates the folder and writes `manifest.plist` with `plistlib`. Pass `binary=True` for a binary plist. Dates in `data` are written as plist dates, and read back as naive UTC datetimes.
 
@@ -60,6 +60,6 @@ from datetime import datetime
 write_manifest(folder, {"creationDate": datetime(2025, 3, 1, 9, 0), "duration": 12.5})
 ```
 
-## keep-fixtures-honest
+## Keep Fixtures Honest
 
-A synthetic file proves the reader handles the structure you built, not that real files look like it. When you add a fixture because of a real file that failed, describe the structure of the real file in the issue, build the smallest synthetic file with that structure, and mark any assumption about the real format as inferred in [file formats](../../docs/reference/file-formats.md).
+A synthetic file proves the reader handles the structure you built, not that real files look like it. When you add a fixture because of a real file that failed, describe the structure of the real file in the issue, build the smallest synthetic file with that structure, and mark any assumption about the real format as inferred in [file formats](../reference/file-formats.md).

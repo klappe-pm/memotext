@@ -1,8 +1,8 @@
-# test-fixtures
+# Test Fixtures
 
 This page describes the helpers that tests use to build synthetic Voice Memos files and a safe environment: the functions in `tests/synthetic.py` and the pytest fixtures in `tests/conftest.py` and `tests/test_recording.py`. No fixture is a real recording. For how to use them, see [build a synthetic recording](../how-to-guides/build-a-synthetic-recording.md).
 
-## synthetic-builders
+## Synthetic Builders
 
 | function | returns | purpose |
 | --- | --- | --- |
@@ -15,7 +15,7 @@ This page describes the helpers that tests use to build synthetic Voice Memos fi
 
 `make_m4a` writes `ftyp`, then `moov` (with the movie header if `duration` is given and the `tsrp` box if a payload is given and `place` is not `top`), then the `tsrp` box if `place` is `top`, then `mdat` filled with `0x01` bytes.
 
-## pytest-fixtures
+## Pytest Fixtures
 
 | fixture | scope | purpose |
 | --- | --- | --- |
@@ -25,14 +25,14 @@ This page describes the helpers that tests use to build synthetic Voice Memos fi
 | `set_timezone` | test | returns a function that sets the local timezone with `time.tzset`; restored when the test ends; skips where `tzset` is missing |
 | `utc_timezone` | test | `set_timezone("UTC")` |
 
-## patching-conventions
+## Patching Conventions
 
 Tests that simulate a blocked folder patch `os.scandir` with a function or a `RaisingScandir` object that raises `PermissionError`. This runs as root, unlike a `chmod 000` directory. Tests that simulate an unreadable file patch `os.open`, which every file read goes through. Tests that simulate macOS or Linux patch `sys.platform` and `os.access`, and replace `subprocess.run`, so no test ever runs the real `mdfind`; `shutil.which` is patched to fail, to prove `mdfind` is not looked up on `PATH`.
 
-## deadlines
+## Deadlines
 
 `tests/test_hardening.py` holds the hostile input tests. Those that would hang or run for minutes without their fix run inside its `deadline(seconds)` context manager, which uses `signal.setitimer` to raise `TimeoutError`, so a regression fails in seconds. The helper skips where `setitimer` is missing. Tests that need a FIFO or a symlink skip where the platform lacks them. Use `monkeypatch` for every patch so it is undone at the end of the test.
 
-## skips
+## Skips
 
 A skip must carry a reason. The skips today are the three tests that use a real unreadable directory (skipped as root or on Windows), the timezone tests (skipped without `time.tzset`), and the FIFO, symlink and deadline tests (skipped without `os.mkfifo`, symlink support or `signal.setitimer`).

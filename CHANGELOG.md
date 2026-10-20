@@ -1,22 +1,28 @@
-# changelog
+# Changelog
 
 All notable changes to this project are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## unreleased
+## Unreleased
 
-### added
+### Added
 
 - Package scaffold: `pyproject.toml` with the hatchling build backend, no runtime dependencies and the `voicememos` console script.
 - Library discovery, layer 1: `probe_library` and `probe_path` report each known path as `missing`, `readable`, `blocked` or `empty`, so a folder that exists but cannot be listed is never reported as found. `find_library` returns only a readable folder.
 - Library discovery, layer 2: `spotlight_search` asks `mdfind` for candidate folders. It runs only on macOS and only when `find_library` is called with `spotlight=True` or a command is given `--spotlight`.
 - `Recording`, `iter_recordings`, `read_transcript` and `content_hash`, with a standard library reader for the MP4 boxes that carry the duration (`mvhd`) and the iOS transcript (`tsrp`), and for the transcript in a `.composition` folder's `manifest.plist`.
 - The `voicememos` command with `probe`, `list` and `show`, each with `--json`.
-- Documentation in two trees arranged by Diátaxis quadrant: `docs/` for people who use voicememos and `developer-docs/` for people who change it, including an explanation of where macOS keeps Voice Memos and why Full Disk Access matters, and a reference for the `tsrp` and plist formats that marks what is inferred.
-- Repository documents: `README.md`, `contributing.md`, `security.md` and `support.md`.
-- Hardening against hostile files, with regression tests in `tests/test_hardening.py`: every file is opened without following symlinks or blocking on a FIFO; MP4 walking is lazy and bounded (10,000 boxes, 8 levels, a 64 MiB and 1,000 hit cap on the byte scan); the manifest search is iterative with a depth limit of 32 and a budget of 100,000 values, and visits shared values once; non finite and oversized durations are ignored and JSON output forbids NaN; dates outside the supported range no longer raise; a recording that cannot be read is skipped with a warning instead of aborting the run; text from files is escaped before it reaches a terminal; `list` keeps no transcript text; `mdfind` is called by absolute path. [security model](docs/explanation/security-model.md) states each limit.
+- Documentation in one `docs/` tree arranged by Diátaxis quadrant, for people who use Voicememos and for people who change it, including an explanation of where macOS keeps Voice Memos and why Full Disk Access matters, and a reference for the `tsrp` and plist formats that marks what is inferred.
+- Repository documents: `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`, `CODE_OF_CONDUCT.md`, issue templates for a bug report, a feature request and a question, and a pull request template.
+- Hardening against hostile files, with regression tests in `tests/test_hardening.py`: every file is opened without following symlinks or blocking on a FIFO; MP4 walking is lazy and bounded (10,000 boxes, 8 levels, a 64 MiB and 1,000 hit cap on the byte scan); the manifest search is iterative with a depth limit of 32 and a budget of 100,000 values, and visits shared values once; non finite and oversized durations are ignored and JSON output forbids NaN; dates outside the supported range no longer raise; a recording that cannot be read is skipped with a warning instead of aborting the run; text from files is escaped before it reaches a terminal; `list` keeps no transcript text; `mdfind` is called by absolute path. The [Security Model](docs/explanation/security-model.md) states each limit.
 - A file system fallback for the recording date that reads `st_birthtime` with `getattr` and falls back to the modification time, because the attribute exists on macOS but not on Linux.
 
-### fixed
+### Changed
+
+- The documentation is one tree under `docs/`. The contributor pages moved there from `developer-docs/`, `release.md` is now `cut-a-release.md` and `api.md` is now `python-api.md`. Headings use Title Case, and the community files have uppercase names: `CHANGELOG.md`, `CONTRIBUTING.md`, `SECURITY.md` and `SUPPORT.md`.
+- The README follows the Stratarc layout: a banner, a badge row, a navigation row, a table of what changes with Voicememos, and sections in a fixed order. Every link in it is absolute so that it works on PyPI.
+- `docs/documentation-guide/` is no longer tracked and is listed in `.gitignore`.
+
+### Fixed
 
 - A hostile `manifest.plist` that made `plistlib` raise an `AttributeError`, `IndexError` or `LookupError` no longer aborts `list` and `show` with a traceback. `read_manifest` treats such a file as having no manifest, and `iter_recordings` skips a recording whose parsing raises any unexpected exception and reports it through `on_skip`.
 - Terminal escaping now covers every character in the Unicode categories `Cf`, `Zl` and `Zp`, plus the combining grapheme joiner, the Hangul fillers, the variation selectors and the whole tag block U+E0000 to U+E007F. A title could previously smuggle hidden text, spelled in tag characters, into any program that read `show` output. Characters above U+FFFF are written `\UNNNNNNNN`.

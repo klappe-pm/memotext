@@ -1,12 +1,12 @@
-# install
+# Install
 
 This guide covers installing voicememos for someone who already knows they want it: the supported install methods, the Python versions it runs on, and how to upgrade and uninstall. If you have never used it, start with [getting started](../tutorials/getting-started.md), which walks the install as one step among several.
 
-## requirements
+## Requirements
 
 Python 3.11 or newer. voicememos has no runtime dependencies beyond the standard library. To read a real Voice Memos library you need macOS. On Linux or Windows the package installs and runs, and you can point it at a folder you copied with `--library PATH`.
 
-## install-from-the-repository
+## Install from the Repository
 
 There is no release and no PyPI package yet, so install from the repository:
 
@@ -20,7 +20,7 @@ To pin a commit or tag, add it after an `@`:
 pipx install git+https://github.com/klappe-pm/voicememos@main
 ```
 
-## install-into-a-virtual-environment
+## Install into a Virtual Environment
 
 Use this when you want the library in a project rather than the command on your path.
 
@@ -28,13 +28,13 @@ Use this when you want the library in a project rather than the command on your 
 python3 -m venv .venv && . .venv/bin/activate && pip install git+https://github.com/klappe-pm/voicememos
 ```
 
-## install-for-development
+## Install for Development
 
 ```bash
 git clone https://github.com/klappe-pm/voicememos && cd voicememos && python3 -m venv .venv && . .venv/bin/activate && pip install -e '.[test,lint]'
 ```
 
-## verify
+## Verify
 
 ```bash
 voicememos --version
@@ -42,13 +42,13 @@ voicememos --version
 
 The command prints `voicememos` and the version. `python3 -m voicememos --version` does the same without the console script on your path.
 
-## upgrade
+## Upgrade
 
 ```bash
 pipx upgrade voicememos
 ```
 
-## uninstall
+## Uninstall
 
 ```bash
 pipx uninstall voicememos

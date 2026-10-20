@@ -1,4 +1,4 @@
-# api
+# Python API
 
 This page is the reference for the public Python API of the `voicememos` package: everything importable from the top level `voicememos` module. It lists each name with its signature, what it returns and what it raises. Anything not listed here, including the submodules `mp4` and `transcripts`, is internal and may change. The package has no configuration keys and reads no environment variable of its own; see [cli](cli.md) for the note on environment.
 
@@ -23,7 +23,7 @@ from voicememos import (
 )
 ```
 
-## recording
+## `Recording`
 
 `Recording` is a frozen dataclass describing one recording.
 
@@ -44,11 +44,11 @@ Constructing a `Recording` with a naive `recorded_at` raises `ValueError`.
 
 How `recorded_at`, `duration_seconds` and `title` are chosen is described in [file formats](file-formats.md).
 
-## transcript
+## `Transcript`
 
 `Transcript` is a frozen dataclass with `text: str` and `source: str`, where `source` is `"tsrp"` or `"plist"`.
 
-## iter-recordings
+## `iter_recordings`
 
 `iter_recordings(library_path: str | PathLike[str], *, transcripts: bool = True, on_skip: Callable[[Path, OSError], None] | None = None) -> Iterator[Recording]`
 
@@ -60,13 +60,13 @@ Raises `LibraryNotFoundError` when the folder is missing or is not a directory, 
 
 If an `OSError` stops one recording from being read, such as a permission error or a file that vanished after listing, that recording is skipped and the others are still yielded. So is a recording whose parsing raises any other exception (except `MemoryError`); `on_skip` then receives an `OSError` whose message names the exception type. `on_skip(audio_path, error)` is called for each skipped recording. Without `on_skip`, a `RecordingSkippedWarning` is issued, which Python prints on standard error.
 
-## read-transcript
+## `read_transcript`
 
 `read_transcript(recording: Recording) -> Transcript | None`
 
 Reads the transcript from the files again. The `tsrp` atom in the audio file is tried first, then the manifest in the composition folder. Returns None when neither holds text. Unlike the `transcript_text` field, the result reflects the files as they are now.
 
-## content-hash
+## `content_hash`
 
 `content_hash(recording: Recording) -> str`
 
@@ -74,25 +74,25 @@ Returns a SHA 256 hex digest (64 characters) of the audio file and of every file
 
 Raises `FileNotFoundError` if the audio file is gone, `UnsafeFileError` if it is a symlink or not a regular file, and `PermissionError` (or another `OSError`) if a file cannot be read or a folder under the composition folder cannot be listed. A subfolder that cannot be listed is never skipped silently. Raises `CompositionLimitError` if the composition folder is nested more than 64 levels deep or holds more than 100,000 entries. A composition folder that has vanished, or is a symlink, is skipped.
 
-## find-library
+## `find_library`
 
 `find_library(paths: Iterable[str | PathLike[str]] | None = None, *, spotlight: bool = False) -> Path | None`
 
 Returns the first path in the `readable` state, with `~` expanded, or None. Blocked, empty and missing paths are skipped. With `paths=None`, `KNOWN_PATHS` is used. With `spotlight=True`, and only when no listed path is readable, the folders from `spotlight_search` that lie inside a known Voice Memos container under `~/Library` are probed and the readable one with the most recordings is returned, ties broken by path. A folder elsewhere is never adopted, however its path is spelled. See [library states](library-states.md).
 
-## probe-library
+## `probe_library`
 
 `probe_library(paths: Iterable[str | PathLike[str]] | None = None) -> list[PathProbe]`
 
 Probes each path and returns the results in the same order. With `paths=None`, `KNOWN_PATHS` is used.
 
-## probe-path
+## `probe_path`
 
 `probe_path(path: str | PathLike[str]) -> PathProbe`
 
 Probes one path by listing it. It does not raise for a missing or blocked path; the outcome is the returned state.
 
-## path-probe
+## `PathProbe`
 
 `PathProbe` is a frozen dataclass.
 
@@ -105,21 +105,21 @@ Probes one path by listing it. It does not raise for a missing or blocked path; 
 
 `PathProbe.to_dict() -> dict[str, object]` returns `path`, `state` (the string value), `recording_count` and `detail`.
 
-## path-state
+## `PathState`
 
 `PathState` is a `StrEnum` with the members `MISSING = "missing"`, `READABLE = "readable"`, `BLOCKED = "blocked"` and `EMPTY = "empty"`.
 
-## known-paths
+## `KNOWN_PATHS`
 
 `KNOWN_PATHS: tuple[Path, ...]` holds the five default locations, each starting with `~`. The list is in [library states](library-states.md).
 
-## spotlight-search
+## `spotlight_search`
 
 `spotlight_search(runner: Callable[[list[str]], str] | None = None) -> list[Path]`
 
 Asks Spotlight for candidate folders and returns the parent folder of each hit, once each, in the order found. Without `runner` it runs `/usr/bin/mdfind`, by that absolute path and not through `PATH`, with a 30 second timeout, and works only on macOS; elsewhere, or when that program is missing or fails, it returns an empty list. A `runner` takes the `mdfind` arguments and returns its text output, which lets a test supply canned output on any platform. It never raises for a failed search.
 
-## errors
+## Errors
 
 | class | bases | raised when |
 | --- | --- | --- |
@@ -130,6 +130,6 @@ Asks Spotlight for candidate folders and returns the parent folder of each hit, 
 | `CompositionLimitError` | `VoiceMemosError` | `content_hash` was given a recording whose composition folder is nested more than 64 levels deep or holds more than 100,000 entries |
 | `RecordingSkippedWarning` | `UserWarning` | issued by `iter_recordings` for a recording skipped because an `OSError` stopped it being read; a warning, not an exception |
 
-## version
+## Version
 
 `voicememos.__version__` is the version string, `"0.1.0"`.

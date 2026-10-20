@@ -1,8 +1,8 @@
-# file-formats
+# File Formats
 
 This page describes the files voicememos reads, as far as the code understands them: the MP4 box structure of an `.m4a` recording, the `tsrp` atom that carries the iOS transcript, the movie header that carries the duration, the `manifest.plist` in a `.composition` folder, and the file naming. It also states how each field of a `Recording` is chosen. Each statement is marked. No real Voice Memos file was available while this package was written, so the tests use synthetic files built to match these descriptions.
 
-## how-to-read-the-status-column
+## How to Read the Status Column
 
 | status | meaning |
 | --- | --- |
@@ -10,7 +10,7 @@ This page describes the files voicememos reads, as far as the code understands t
 | inferred | taken from the code this package was extracted from, or reasoned from it; not verified against a real file |
 | design | a choice made by this package, not a property of the files |
 
-## mp4-boxes
+## MP4 Boxes
 
 An `.m4a` file is a sequence of boxes (also called atoms). The reader walks them with seeks and never loads the audio.
 
@@ -24,7 +24,7 @@ An `.m4a` file is a sequence of boxes (also called atoms). The reader walks them
 | nesting limit | 8 levels | design |
 | box larger than its parent | clamped to the parent and treated as a damaged file | design |
 
-## duration
+## Duration
 
 The duration comes from the movie header box, `mvhd`, found directly inside `moov`.
 
@@ -34,7 +34,7 @@ The duration comes from the movie header box, `mvhd`, found directly inside `moo
 
 The duration in seconds is the duration divided by the time scale. A time scale of 0, a short header or another version gives no duration. That the `mvhd` duration matches the recording length for Voice Memos files is inferred.
 
-## tsrp
+## Tsrp
 
 The `tsrp` atom holds the transcript iOS and macOS produced.
 
@@ -57,15 +57,15 @@ The JSON shape the reader accepts:
 
 `attributedString` may also be a bare list in place of the object with `runs`. The list alternates text and integer attribute indexes. The reader keeps the strings, joins them with nothing in between, and strips the ends. The integers are ignored. The `locale` key and any other key are not read. All of this shape is inferred.
 
-### when-the-box-is-not-found
+### When the Box Is Not Found
 
 If the box tree parses cleanly (the top level boxes tile the file exactly and include `moov`) and no `tsrp` is found, the file has no transcript and the bytes are not searched. If the structure is damaged, the reader falls back to scanning the file for the four bytes `tsrp`, and treats the four bytes before a hit as the box size. The scan reads at most the first 64 MiB and examines at most 1,000 hits. If the walk spent its budget of 10,000 boxes, the file is refused and not scanned. This fallback keeps the behaviour of the tool this package was extracted from, which searched the bytes. It is a design choice, and it may read a hit that is not a real box when the file is damaged. The limits are collected in the [security model](../explanation/security-model.md).
 
-## composition-folders
+## Composition Folders
 
-Next to `<id>.m4a` there may be a folder `<id>.composition`. That the folder holds the memo's metadata is inferred. The reader looks for one file in it, `manifest.plist`, and hashes every file under it for [content_hash](api.md#content-hash).
+Next to `<id>.m4a` there may be a folder `<id>.composition`. That the folder holds the memo's metadata is inferred. The reader looks for one file in it, `manifest.plist`, and hashes every file under it for [content_hash](python-api.md#content_hash).
 
-## manifest-plist
+## Manifest Plist
 
 `manifest.plist` is a property list, either XML or binary; both are read with the standard library `plistlib` (defined). Voice Memos writes real files in whichever form it chooses; which one is not known. A file that is not a valid plist, or whose top level is not a dictionary, is treated as absent. So is a file that makes the parser raise any exception other than an `OSError` or `MemoryError`.
 
@@ -78,7 +78,7 @@ Keys read, all inferred:
 | `creationDate` | date | the recording time. `plistlib` returns a naive datetime that holds UTC, and the reader treats it as UTC |
 | `duration` | number | the duration in seconds, ahead of the audio header. A boolean, a negative number or a non-number is ignored |
 
-### the-transcript-in-the-plist
+### The Transcript in the Plist
 
 The layout of a transcript in the plist is not known. The reader searches the whole structure with these rules, in this order, and returns the first text it finds. Every rule is inferred, and the whole search is a heuristic.
 
@@ -91,7 +91,7 @@ The layout of a transcript in the plist is not known. The reader searches the wh
 
 A list made only of strings is read as attributed string runs and joined with nothing between them, because the two cannot be told apart. Blank text counts as no text.
 
-## file-names
+## File Names
 
 | item | detail | status |
 | --- | --- | --- |
@@ -102,7 +102,7 @@ A list made only of strings is read as attributed string runs and joined with no
 
 A file whose name does not match, for example a name made only of a UUID, has no date in its name.
 
-## how-recording-fields-are-chosen
+## How Recording Fields Are Chosen
 
 | field | first choice | then | then |
 | --- | --- | --- | --- |
@@ -113,6 +113,6 @@ A file whose name does not match, for example a name made only of a UUID, has no
 
 All of these orders are design choices, kept from the original tool except that the title text uses no dash and the duration needs no third party reader.
 
-## not-read
+## Not Read
 
 `CloudRecordings.db`, any other file in the library folder, and every other key in the plist are not read.
