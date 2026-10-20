@@ -29,7 +29,7 @@ import pytest
 from tests.synthetic import box, make_m4a, mvhd, write_manifest
 from voicememos import mp4, transcripts
 from voicememos import recording as recording_module
-from voicememos.cli import _dump, main
+from voicememos.cli import _dump, _look_alikes, main
 from voicememos.errors import (
     CompositionLimitError,
     RecordingSkippedWarning,
@@ -1861,3 +1861,69 @@ class TestEscapingSpeed:
         elapsed = time.perf_counter() - start
         assert out == text
         assert elapsed < 1.0
+
+
+# ids that print the same are told apart, whatever makes them print the same
+
+RAW_TWINS = (b"memo\xff", b"memo\xfe")
+
+
+def make_raw_named(library: Path, raw: bytes) -> None:
+    try:
+        make_m4a(Path(os.fsdecode(os.path.join(os.fsencode(library), raw + b".m4a"))))
+    except OSError:
+        pytest.skip("the file system does not allow names that are not UTF-8")
+
+
+class TestIdsThatPrintTheSame:
+    @pytest.fixture
+    def raw_twins(self, library: Path) -> Path:
+        for raw in RAW_TWINS:
+            make_raw_named(library, raw)
+        return library
+
+    def test_both_undecodable_ids_print_the_same_when_escaped(self) -> None:
+        a, b = (os.fsdecode(raw) for raw in RAW_TWINS)
+        assert a != b
+        assert printable(a) == printable(b)
+
+    def test_list_tells_two_undecodable_ids_apart(
+        self, raw_twins: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        code, out, err = run(capsys, "list", "--library", str(raw_twins))
+        assert code == 0, err
+        ids = [line.split()[0] for line in out.splitlines()[1:]]
+        assert len(set(ids)) == 2, ids
+        for raw in RAW_TWINS:
+            assert ascii(os.fsdecode(raw)) in out
+
+    def test_an_ambiguous_prefix_error_tells_them_apart(
+        self, raw_twins: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        code, _, err = run(capsys, "show", "memo", "--library", str(raw_twins))
+        assert code == 1
+        assert "ambiguous" in err
+        for raw in RAW_TWINS:
+            assert ascii(os.fsdecode(raw)) in err
+
+    def test_a_single_undecodable_id_is_not_forced_into_ascii_form(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_raw_named(library, b"solo\xff")
+        _, out, _ = run(capsys, "list", "--library", str(library))
+        assert "solo?" in out
+        assert "udcff" not in out
+
+    def test_ids_that_already_print_differently_are_left_alone(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / "ab.m4a")
+        make_m4a(library / "a​b.m4a")
+        _, out, _ = run(capsys, "list", "--library", str(library))
+        assert "a\\u200bb" in out
+        assert ascii("a​b") not in out
+
+    def test_the_two_forms_are_grouped_together_with_a_normalisation_twin(self) -> None:
+        first, second = (os.fsdecode(raw) for raw in RAW_TWINS)
+        ids = [first, second, NFC_ID, NFD_ID, "plain"]
+        assert _look_alikes(ids) == {first, second, NFC_ID, NFD_ID}

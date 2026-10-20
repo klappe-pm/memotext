@@ -108,15 +108,18 @@ def _warn_skipped(audio: Path, error: OSError) -> None:
 
 
 def _look_alikes(ids: Iterable[str]) -> set[str]:
-    """Return the ids that equal another id once both are put in Unicode form NFC.
+    """Return the ids that print the same as another id.
 
-    A file system that keeps names as written can hold a precomposed and a decomposed spelling of
-    the same word side by side. They print the same, so a table that shows both would hide that
-    they differ.
+    Two ids are grouped when their displayed forms are equal, that is when `printable` gives the
+    same text for both once each is put in Unicode form NFC. That catches a file system that
+    keeps names as written and holds a precomposed and a decomposed spelling of one word side by
+    side, and two names that are not valid UTF-8 and differ only in the bad byte, which both print
+    with a question mark. A table that showed such ids as they print would hide that they differ.
     """
     groups: dict[str, list[str]] = {}
     for recording_id in ids:
-        groups.setdefault(unicodedata.normalize("NFC", recording_id), []).append(recording_id)
+        shown = printable(unicodedata.normalize("NFC", recording_id))
+        groups.setdefault(shown, []).append(recording_id)
     return {recording_id for group in groups.values() if len(group) > 1 for recording_id in group}
 
 
