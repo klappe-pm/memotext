@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import unicodedata
 from collections.abc import Iterable, Sequence
@@ -18,6 +19,8 @@ from voicememos.textsafe import printable
 
 EXIT_OK = 0
 EXIT_ERROR = 1
+EXIT_BROKEN_PIPE = 141
+"""128 plus SIGPIPE: the status a shell reports for a command whose reader closed the pipe."""
 
 FULL_DISK_ACCESS_HINT = (
     "Grant Full Disk Access to the terminal or interpreter that runs this command: "
@@ -291,16 +294,45 @@ def _make_streams_lossless() -> None:
             continue
 
 
+def _silence_stdout() -> None:
+    """Point standard output at the null device after the reader closed the pipe.
+
+    This is the pattern the Python documentation gives for `BrokenPipeError`. The buffered output
+    that could not be written is then flushed to the null device when the interpreter exits,
+    instead of raising a second time with a message on standard error.
+    """
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(devnull, sys.stdout.fileno())
+        finally:
+            os.close(devnull)
+    except (AttributeError, OSError, ValueError):
+        # A stream without a descriptor (one a caller replaced) has nothing to redirect.
+        pass
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the command line interface and return the exit status.
 
     Exit statuses: 0 on success, 1 when no readable library is found, a library cannot be
-    listed, or a recording id does not match, and 2 for a usage error.
+    listed, or a recording id does not match, 2 for a usage error, and 141 when the reader of
+    standard output closed the pipe early (`voicememos list | head -1`), which ends the command
+    without a message.
     """
     _make_streams_lossless()
     args = _build_parser().parse_args(argv)
     try:
-        return _COMMANDS[args.command](args)
+        status = _COMMANDS[args.command](args)
+        # Flush inside the handler: output that fits in the buffer is otherwise written, and
+        # fails, only when the interpreter exits, where nothing can handle it.
+        flush = getattr(sys.stdout, "flush", None)
+        if flush is not None:
+            flush()
+        return status
+    except BrokenPipeError:
+        _silence_stdout()
+        return EXIT_BROKEN_PIPE
     except (VoiceMemosError, OSError) as exc:
         print(f"voicememos: {printable(str(exc))}", file=sys.stderr)
         return EXIT_ERROR

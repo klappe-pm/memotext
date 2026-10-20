@@ -69,6 +69,7 @@ Without `--library`, the first readable known folder is used. Plain output is a 
 | 0 | success; for `probe`, a readable library exists |
 | 1 | no readable library was found, a folder exists but cannot be listed, a folder is missing, an id matched nothing or several recordings, or reading the chosen recording failed with an operating system error; `probe` also returns 1 when nothing is readable. The message is on standard error, prefixed `voicememos:` |
 | 2 | usage error, such as an unknown command or a missing argument |
+| 141 | the reader of standard output closed the pipe early, as `head -1` does; nothing is printed on standard error |
 
 ## Configuration
 

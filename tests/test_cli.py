@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import os
 import runpy
+import shutil
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -354,3 +356,90 @@ class TestFormatting:
     def test_shorten(self) -> None:
         assert cli._shorten("short", 10) == "short"
         assert cli._shorten("a" * 20, 10) == "a" * 7 + "..."
+
+
+class TestClosedPipe:
+    """A reader that stops early, as `head -1` does, ends the command quietly."""
+
+    @staticmethod
+    def big_library(folder: Path) -> Path:
+        for index in range(1500):
+            make_m4a(folder / f"{index:05d}-{'x' * 40}.m4a", duration=1.0)
+        return folder
+
+    def test_list_piped_into_head_prints_no_error(self, library: Path) -> None:
+        if shutil.which("head") is None:
+            pytest.skip("needs the head program")
+        self.big_library(library)
+        lister = subprocess.Popen(  # noqa: S603
+            [sys.executable, "-m", "voicememos", "list", "--library", str(library)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert lister.stdout is not None
+        head = subprocess.Popen(  # noqa: S603
+            [shutil.which("head") or "head", "-1"], stdin=lister.stdout, stdout=subprocess.PIPE
+        )
+        lister.stdout.close()
+        shown, _ = head.communicate(timeout=60)
+        _, err = lister.communicate(timeout=60)
+        assert shown.count(b"\n") == 1
+        assert err == b"", err
+        assert lister.returncode == 141
+
+    def test_a_pipe_closed_before_the_first_read_is_quiet_too(self, library: Path) -> None:
+        self.big_library(library)
+        lister = subprocess.Popen(  # noqa: S603
+            [sys.executable, "-m", "voicememos", "list", "--library", str(library)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        assert lister.stdout is not None
+        lister.stdout.close()
+        _, err = lister.communicate(timeout=60)
+        assert b"Broken pipe" not in err
+        assert b"Traceback" not in err
+        assert b"Exception ignored" not in err
+        assert lister.returncode == 141
+
+    def test_main_returns_141_without_a_message_when_the_stream_breaks(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+
+        class Broken:
+            def write(self, text: str) -> int:
+                raise BrokenPipeError(32, "Broken pipe")
+
+            def flush(self) -> None:
+                raise BrokenPipeError(32, "Broken pipe")
+
+        monkeypatch.setattr(sys, "stdout", Broken())
+        assert main(["list", "--library", str(library)]) == 141
+        assert capsys.readouterr().err == ""
+
+    def test_a_pipe_that_breaks_on_the_final_flush_is_quiet(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+
+        class BreaksOnFlush:
+            def write(self, text: str) -> int:
+                return len(text)
+
+            def flush(self) -> None:
+                raise BrokenPipeError(32, "Broken pipe")
+
+        monkeypatch.setattr(sys, "stdout", BreaksOnFlush())
+        assert main(["list", "--library", str(library)]) == 141
+        assert capsys.readouterr().err == ""
+
+    def test_other_oserrors_are_still_reported(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        def fail(args: object) -> int:
+            raise OSError(5, "I/O error")
+
+        monkeypatch.setitem(cli._COMMANDS, "list", fail)
+        assert main(["list", "--library", str(library)]) == 1
+        assert "I/O error" in capsys.readouterr().err
