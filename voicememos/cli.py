@@ -227,12 +227,29 @@ def _cmd_show(args: argparse.Namespace) -> int:
 _COMMANDS = {"probe": _cmd_probe, "list": _cmd_list, "show": _cmd_show}
 
 
+def _make_streams_lossless() -> None:
+    """Make standard output and error print what they cannot encode as a backslash escape.
+
+    A terminal or a pipe set to ASCII, or to any encoding that lacks a character in a title or a
+    file name, would otherwise raise `UnicodeEncodeError` in the middle of a table.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="backslashreplace")
+        except (ValueError, OSError):
+            continue
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the command line interface and return the exit status.
 
     Exit statuses: 0 on success, 1 when no readable library is found, a library cannot be
     listed, or a recording id does not match, and 2 for a usage error.
     """
+    _make_streams_lossless()
     args = _build_parser().parse_args(argv)
     try:
         return _COMMANDS[args.command](args)

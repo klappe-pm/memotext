@@ -14,6 +14,8 @@ import plistlib
 import shutil
 import signal
 import struct
+import subprocess
+import sys
 import time
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -1138,3 +1140,59 @@ class TestContentHashWalk:
 
         monkeypatch.setattr(recording_module, "is_real_dir", racing)
         assert content_hash(rec) == expected
+
+
+# output survives a terminal that cannot encode what a file name holds
+
+
+class TestUndecodableOutput:
+    def test_a_non_ascii_id_under_an_ascii_stream_exits_zero_without_a_traceback(
+        self, library: Path
+    ) -> None:
+        name = "café 日本"
+        try:
+            make_m4a(library / f"{name}.m4a", transcript="plain words")
+        except OSError:
+            pytest.skip("the file system does not allow non ASCII names")
+        env = {
+            **os.environ,
+            "PYTHONIOENCODING": "ascii",
+            "PYTHONUTF8": "1",
+            "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
+        }
+        for command in (["list"], ["show", name], ["list", "--json"]):
+            done = subprocess.run(  # noqa: S603
+                [sys.executable, "-m", "voicememos", *command, "--library", str(library)],
+                capture_output=True,
+                env=env,
+                check=False,
+                timeout=30,
+            )
+            assert done.returncode == 0, done.stderr
+            assert b"Traceback" not in done.stderr
+            assert done.stdout.isascii()
+        text = done.stdout.decode("ascii")
+        assert "\\u00e9" in text
+
+    def test_main_reconfigures_both_streams(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        seen: list[tuple[str, str]] = []
+
+        class Stream:
+            def __init__(self, name: str) -> None:
+                self.name = name
+
+            def reconfigure(self, *, errors: str) -> None:
+                seen.append((self.name, errors))
+
+            def write(self, text: str) -> int:
+                return len(text)
+
+            def flush(self) -> None:
+                pass
+
+        monkeypatch.setattr(sys, "stdout", Stream("stdout"))
+        monkeypatch.setattr(sys, "stderr", Stream("stderr"))
+        with pytest.raises(SystemExit):
+            main(["--version"])
+        assert ("stdout", "backslashreplace") in seen
+        assert ("stderr", "backslashreplace") in seen

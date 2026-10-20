@@ -57,6 +57,7 @@ Without `--library`, the first readable known folder is used. Plain output is a 
 ## output-and-errors
 
 - Text from files (titles, transcripts, ids, paths) is escaped in all plain output. Control characters, including ESC and newline, DEL, the C1 controls and invisible format characters are printed as `\xNN` or `\uNNNN`, so a file cannot move the cursor, set the window title, write to the clipboard or add a row to a table. In `show`, the transcript keeps its line feeds and every other control character in it is escaped. A lone surrogate prints as `?`. The full list is in the [security model](../explanation/security-model.md#terminal-output).
+- Standard output and standard error are switched to `backslashreplace` before anything is printed, so a character the stream's encoding cannot represent, such as a non ASCII title under `PYTHONIOENCODING=ascii`, prints as a backslash escape instead of raising `UnicodeEncodeError`.
 - `--json` output is ASCII only and never contains `NaN` or `Infinity`; a duration that is not a finite number is null.
 - A recording that cannot be read (a permission error, or a file that vanished after listing) is skipped. For each one, `voicememos: warning: skipped <path>: <reason>` is printed on standard error and the exit status stays 0.
 - Symlinks are never followed. A symlinked `.m4a` is not listed, and a symlinked `.composition` folder or `manifest.plist` is ignored.
