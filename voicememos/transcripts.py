@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from voicememos.mp4 import read_tsrp_payload
-from voicememos.safeio import ABSENT_ERRORS, is_real_dir, open_regular
+from voicememos.safeio import ABSENT_ERRORS, close_dir, is_real_dir, open_child, open_dir
 
 SOURCE_TSRP = "tsrp"
 SOURCE_PLIST = "plist"
@@ -205,10 +205,18 @@ def read_manifest(composition_path: Path) -> dict[str, Any] | None:
     """
     if not is_real_dir(composition_path):
         return None
+    # The folder is opened without following a symlink, and the manifest is opened inside it by
+    # descriptor. A folder swapped for a symlink after the check above is refused, not followed.
     try:
-        f = open_regular(composition_path / "manifest.plist")
+        folder = open_dir(composition_path)
     except ABSENT_ERRORS:
         return None
+    try:
+        f = open_child(folder, "manifest.plist")
+    except ABSENT_ERRORS:
+        return None
+    finally:
+        close_dir(folder)
     try:
         with f:
             if os.fstat(f.fileno()).st_size > _MAX_MANIFEST_BYTES:

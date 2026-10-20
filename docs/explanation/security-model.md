@@ -25,7 +25,10 @@ Every file is opened with `O_NOFOLLOW` and `O_NONBLOCK` and then checked with `f
 - A symlink as the final path component is refused. A symlinked `.m4a` is not listed as a recording and is not counted by `probe`. A symlinked `.composition` folder is treated as absent. A symlinked `manifest.plist` is treated as absent. Symlinks inside a composition folder are not hashed by `content_hash`, and a symlinked audio file makes `content_hash` raise `UnsafeFileError`. Nothing a symlink points to is read.
 - A FIFO, socket, device or directory in place of a file is refused without blocking, because `O_NONBLOCK` makes the open return at once. Such a file is treated as absent.
 - The folder you name, or the first known path that is readable, is itself followed if it is a symlink. That is your choice. Only the entries inside it are protected.
-- A file can still be swapped between the check and the read by a process with write access to the folder. The open and the `fstat` use the same descriptor, which closes the gap for the file type, but not for its content.
+- A `.composition` folder is opened with `O_DIRECTORY` and `O_NOFOLLOW`, and `manifest.plist` is then opened relative to that descriptor with `O_NOFOLLOW`. A folder that a process with write access swaps for a symlink after the check is refused instead of followed, so nothing outside the library is read. `content_hash` walks the folder from a descriptor in the same way.
+- The library folder you name is followed as given, as the previous point says. The `.m4a` files inside it are each opened with `O_NOFOLLOW`, so an entry swapped for a symlink after it was listed is refused.
+- A file can still be modified between the check and the read by a process with write access to the folder. The open and the `fstat` use the same descriptor, which closes the gap for the file type, but not for its content.
+- A platform without descriptor relative opens (Windows) falls back to paths and `lstat` checks, which cannot close the swap race. The race needs a hostile writer in the library folder.
 
 ### mp4-structure
 

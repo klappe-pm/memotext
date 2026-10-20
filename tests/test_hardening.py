@@ -10,6 +10,7 @@ import contextlib
 import json
 import os
 import plistlib
+import shutil
 import signal
 import struct
 import time
@@ -26,7 +27,7 @@ from voicememos.cli import _dump, main
 from voicememos.errors import RecordingSkippedWarning, UnsafeFileError
 from voicememos.mp4 import read_duration_seconds, read_tsrp_payload
 from voicememos.recording import Recording, content_hash, iter_recordings, local_time
-from voicememos.safeio import is_real_dir, open_regular
+from voicememos.safeio import close_dir, is_real_dir, open_dir, open_regular, scan_dir
 from voicememos.textsafe import printable
 from voicememos.transcripts import read_manifest, transcript_from_manifest
 
@@ -430,7 +431,7 @@ def three_with_one_blocked(library: Path, monkeypatch: pytest.MonkeyPatch) -> Pa
     real_open = os.open
 
     def guarded(path: str | os.PathLike[str], *args: object, **kwargs: object) -> int:
-        if str(path).endswith("b.composition/manifest.plist"):
+        if str(path).endswith("b.composition"):
             raise PermissionError(1, "Operation not permitted")
         return real_open(path, *args, **kwargs)  # type: ignore[arg-type]
 
@@ -910,3 +911,76 @@ class TestSkipWarningText:
         assert "‮" not in message
         assert "\\x1b" in message
         assert "\\u202e" in message
+
+
+# a folder swapped for a symlink between the check and the open
+
+
+class TestFolderSwap:
+    @staticmethod
+    def build(tmp_path: Path) -> tuple[Path, Path]:
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        (outside_dir / "manifest.plist").write_bytes(
+            plistlib.dumps({"title": "OUTSIDE THE LIBRARY"})
+        )
+        composition = tmp_path / "lib" / "memo.composition"
+        composition.mkdir(parents=True)
+        (composition / "manifest.plist").write_bytes(plistlib.dumps({"title": "inside"}))
+        return composition, outside_dir
+
+    @staticmethod
+    def swap_after_check(
+        monkeypatch: pytest.MonkeyPatch, module: object, composition: Path, outside_dir: Path
+    ) -> list[str]:
+        real = module.is_real_dir  # type: ignore[attr-defined]
+        swaps: list[str] = []
+
+        def racing(path: Path) -> bool:
+            ok: bool = real(path)
+            if ok and path == composition:
+                shutil.rmtree(composition)
+                make_symlink(composition, outside_dir)
+                swaps.append("swapped")
+            return ok
+
+        monkeypatch.setattr(module, "is_real_dir", racing)
+        return swaps
+
+    def test_read_manifest_does_not_follow_the_swapped_folder(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        composition, outside_dir = self.build(tmp_path)
+        swaps = self.swap_after_check(monkeypatch, transcripts, composition, outside_dir)
+        assert read_manifest(composition) is None
+        assert swaps == ["swapped"]
+
+    def test_a_manifest_swapped_for_a_symlink_after_the_folder_is_open_is_refused(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        composition, outside_dir = self.build(tmp_path)
+        real_open_child = transcripts.open_child
+
+        def racing(ref: object, name: str) -> object:
+            (composition / name).unlink()
+            make_symlink(composition / name, outside_dir / name)
+            return real_open_child(ref, name)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(transcripts, "open_child", racing)
+        assert read_manifest(composition) is None
+
+    def test_open_dir_refuses_a_symlink_and_a_file(self, tmp_path: Path) -> None:
+        _, outside_dir = self.build(tmp_path)
+        link = tmp_path / "link"
+        make_symlink(link, outside_dir)
+        with pytest.raises(UnsafeFileError):
+            open_dir(link)
+        with pytest.raises(UnsafeFileError):
+            open_dir(outside_dir / "manifest.plist")
+        with pytest.raises(FileNotFoundError):
+            open_dir(tmp_path / "missing")
+        ref = open_dir(outside_dir)
+        try:
+            assert scan_dir(ref) == ([], ["manifest.plist"])
+        finally:
+            close_dir(ref)
