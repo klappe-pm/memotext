@@ -1498,3 +1498,53 @@ class TestUnlistableRootDoesNotLeak:
             with pytest.raises(OSError, match="I/O error"):
                 content_hash(rec)
         assert open_descriptors() == before
+
+
+# a file name that is not UTF-8 is hashed, not a crash
+
+
+PINNED_DIGEST = "be0f8030bbf24239985bd3342051a0884df6b725ae2ddc9681e0381707949d96"
+
+
+class TestUndecodableNamesInComposition:
+    def test_the_digest_of_valid_names_is_pinned(self, library: Path) -> None:
+        make_m4a(library / "m.m4a", duration=1.0)
+        folder = library / "m.composition"
+        (folder / "sub").mkdir(parents=True)
+        (folder / "a.bin").write_bytes(b"x")
+        (folder / "sub" / "café.bin").write_bytes(b"yy")
+        assert content_hash(next(iter_recordings(library))) == PINNED_DIGEST
+
+    def test_names_that_differ_only_in_an_invalid_byte_give_different_digests(
+        self, library: Path
+    ) -> None:
+        make_m4a(library / "m.m4a", duration=1.0)
+        folder = os.fsencode(library / "m.composition")
+        os.mkdir(folder)
+        digests = []
+        for raw in (b"\xff.bin", b"\xfe.bin"):
+            for old in os.listdir(folder):
+                os.unlink(os.path.join(folder, old))
+            try:
+                with open(os.path.join(folder, raw), "wb") as f:
+                    f.write(b"x")
+            except OSError:
+                pytest.skip("the file system does not allow names that are not UTF-8")
+            digests.append(content_hash(next(iter_recordings(library))))
+        assert all(len(d) == 64 for d in digests)
+        assert digests[0] != digests[1]
+
+    def test_the_label_uses_the_original_bytes_of_the_name(self, library: Path) -> None:
+        make_m4a(library / "m.m4a", duration=1.0)
+        folder = os.fsencode(library / "m.composition")
+        os.mkdir(folder)
+        try:
+            with open(os.path.join(folder, b"\xff.bin"), "wb") as f:
+                f.write(b"x")
+        except OSError:
+            pytest.skip("the file system does not allow names that are not UTF-8")
+        audio = (library / "m.m4a").read_bytes()
+        expected = hashlib.sha256()
+        expected.update(b"audio:%d\n" % len(audio) + audio)
+        expected.update(b"composition/\xff.bin:1\nx")
+        assert content_hash(next(iter_recordings(library))) == expected.hexdigest()

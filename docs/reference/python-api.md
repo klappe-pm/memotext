@@ -70,7 +70,7 @@ Reads the transcript from the files again. The `tsrp` atom in the audio file is 
 
 `content_hash(recording: Recording) -> str`
 
-Returns a SHA 256 hex digest (64 characters) of the audio file and of every file under the composition folder, in sorted relative path order. File sizes and relative names are part of the input; modification times are not. Symlinks and other files that are not regular files inside the composition folder are ignored. The walk is iterative and holds the folders on its current path open as descriptors, so a folder swapped for a symlink during the walk is refused, not followed.
+Returns a SHA 256 hex digest (64 characters) of the audio file and of every file under the composition folder, in sorted relative path order. File sizes and relative names are part of the input, as UTF-8 bytes (a name that is not valid UTF-8 contributes its original bytes); modification times are not. Symlinks and other files that are not regular files inside the composition folder are ignored. The walk is iterative and holds the folders on its current path open as descriptors, so a folder swapped for a symlink during the walk is refused, not followed.
 
 Raises `FileNotFoundError` if the audio file is gone, `UnsafeFileError` if it is a symlink or not a regular file, and `PermissionError` (or another `OSError`) if a file cannot be read or a folder under the composition folder cannot be listed. A subfolder that cannot be listed is never skipped silently. Raises `CompositionLimitError` if the composition folder is nested more than 64 levels deep or holds more than 100,000 entries. A composition folder that has vanished, or is a symlink, is skipped.
 

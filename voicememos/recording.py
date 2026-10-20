@@ -363,7 +363,10 @@ def read_transcript(recording: Recording) -> Transcript | None:
 
 
 def _hash_file(hasher: Any, label: str, f: BinaryIO) -> None:
-    hasher.update(f"{label}:{os.fstat(f.fileno()).st_size}\n".encode())
+    # A name that is not valid UTF-8 reaches Python with lone surrogates. Encoding them back to the
+    # original bytes keeps the label exact and leaves the digest of every valid name unchanged.
+    size = os.fstat(f.fileno()).st_size
+    hasher.update(f"{label}:{size}\n".encode("utf-8", errors="surrogateescape"))
     while chunk := f.read(65536):
         hasher.update(chunk)
 

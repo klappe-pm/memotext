@@ -38,3 +38,4 @@ All notable changes to this project are documented in this file. The format foll
 - `list` and the ambiguous id error of `show` print ids that differ only in Unicode normalisation (NFC against NFD) as `ascii()` literals, so look-alike ids can be told apart.
 - `--json` output is now valid for a strict decoder. A lone surrogate from a file name that is not UTF-8, or from a transcript, is replaced by U+FFFD, and a recording whose id was not valid UTF-8 carries a new `id_bytes_hex` field with the raw bytes of the id.
 - `content_hash` no longer leaks the descriptor of the composition folder when listing that folder fails. The root is closed on any exception before the error is raised.
+- `content_hash` no longer raises `UnicodeEncodeError` for a file name inside the composition folder that is not valid UTF-8. The name is encoded back to its original bytes, so two such names give different digests, and the digest of every valid name is unchanged.
