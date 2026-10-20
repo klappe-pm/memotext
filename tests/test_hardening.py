@@ -1309,3 +1309,80 @@ class TestLookAlikeIds:
             code, out, err = run(capsys, "show", wanted, "--library", str(twins))
             assert code == 0, err
             assert f"id: {wanted}" in out
+
+
+# --json is valid for a strict decoder even when a file name is not UTF-8
+
+
+def assert_strictly_valid(value: object) -> None:
+    """Fail if any string in a decoded document holds a lone surrogate."""
+    if isinstance(value, str):
+        value.encode("utf-8")
+    elif isinstance(value, list):
+        for item in value:
+            assert_strictly_valid(item)
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            assert_strictly_valid(key)
+            assert_strictly_valid(item)
+
+
+class TestStrictJson:
+    @pytest.fixture
+    def bad_name(self, library: Path) -> Path:
+        raw = os.fsencode(library) + b"/bad\xff\xfe.m4a"
+        try:
+            with open(raw, "wb") as f:
+                f.write(b"\x00" * 16)
+        except OSError:
+            pytest.skip("the file system does not allow non UTF-8 names")
+        make_m4a(library / "good.m4a")
+        return library
+
+    @pytest.mark.parametrize("command", [["list"], ["show", "bad"]])
+    def test_output_has_no_lone_surrogate(
+        self,
+        bad_name: Path,
+        capsys: pytest.CaptureFixture[str],
+        command: list[str],
+    ) -> None:
+        code, out, err = run(capsys, *command, "--json", "--library", str(bad_name))
+        assert code == 0, err
+        assert_strictly_valid(strict_json(out))
+        assert "\\udcff" not in out
+        assert "\\udcfe" not in out
+
+    def test_the_id_bytes_are_given_as_hex(
+        self, bad_name: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        _, out, _ = run(capsys, "list", "--library", str(bad_name), "--json")
+        data = strict_json(out)
+        assert isinstance(data, list)
+        by_hex = [item for item in data if "id_bytes_hex" in item]
+        assert [item["id_bytes_hex"] for item in by_hex] == [b"bad\xff\xfe".hex()]
+        assert by_hex[0]["id"].startswith("bad")
+        good = next(item for item in data if item["id"] == "good")
+        assert "id_bytes_hex" not in good
+
+    def test_a_valid_id_has_no_hex_field(self) -> None:
+        moment = datetime(2024, 1, 1, tzinfo=UTC)
+        rec = Recording("ok", Path("/x/ok.m4a"), None, moment, None, "t", None, None)
+        assert "id_bytes_hex" not in rec.to_dict()
+
+    def test_to_dict_adds_the_hex_for_an_undecodable_id(self) -> None:
+        moment = datetime(2024, 1, 1, tzinfo=UTC)
+        name = os.fsdecode(b"bad\xff")
+        rec = Recording(name, Path(name), None, moment, None, "t", None, None)
+        assert rec.to_dict()["id_bytes_hex"] == b"bad\xff".hex()
+
+    def test_a_lone_surrogate_in_a_transcript_is_replaced_in_json(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        payload = b'{"attributedString": {"runs": ["bad \\ud800 text", 0]}}'
+        make_m4a(library / "a.m4a", tsrp=payload)
+        code, out, err = run(capsys, "show", "a", "--json", "--library", str(library))
+        assert code == 0, err
+        data = strict_json(out)
+        assert_strictly_valid(data)
+        assert "\\ud800" not in out
+        assert "bad" in data["transcript"]  # type: ignore[index]

@@ -40,7 +40,7 @@ from voicememos import (
 
 Constructing a `Recording` with a naive `recorded_at` raises `ValueError`.
 
-`Recording.to_dict(*, include_transcript=True) -> dict[str, Any]` returns a JSON ready dictionary with the keys `id`, `audio_path`, `composition_path`, `recorded_at` (ISO 8601), `duration_seconds`, `title`, `transcript_source` and, unless `include_transcript` is false, `transcript`. Paths are strings.
+`Recording.to_dict(*, include_transcript=True) -> dict[str, Any]` returns a JSON ready dictionary with the keys `id`, `audio_path`, `composition_path`, `recorded_at` (ISO 8601), `duration_seconds`, `title`, `transcript_source` and, unless `include_transcript` is false, `transcript`. Paths are strings. When the file name is not valid UTF-8 the dictionary also has `id_bytes_hex`, the raw bytes of the id as lowercase hexadecimal text; the key is absent for every other recording. The strings in that case still hold the lone surrogates Python uses for undecodable bytes, which the command line replaces before it writes JSON.
 
 How `recorded_at`, `duration_seconds` and `title` are chosen is described in [file formats](file-formats.md).
 

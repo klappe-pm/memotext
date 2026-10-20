@@ -75,9 +75,28 @@ def _shorten(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
+def _strict(value: object) -> object:
+    """Return `value` with every lone surrogate in a string replaced by U+FFFD.
+
+    A file name that is not valid UTF-8 reaches Python as a string with lone surrogates. JSON
+    written with `\\udcXX` escapes for them parses in Python but is rejected by strict decoders.
+    """
+    if isinstance(value, str):
+        return "".join("\ufffd" if 0xD800 <= ord(ch) <= 0xDFFF else ch for ch in value)
+    if isinstance(value, list):
+        return [_strict(item) for item in value]
+    if isinstance(value, dict):
+        return {_strict(key): _strict(item) for key, item in value.items()}
+    return value
+
+
 def _dump(data: object) -> str:
-    """Serialise to JSON that every parser accepts: no NaN or Infinity, ASCII only."""
-    return json.dumps(data, indent=2, allow_nan=False)
+    """Serialise to JSON that every parser accepts.
+
+    No NaN or Infinity, ASCII only, and no lone surrogate: a string that holds one has it replaced
+    by U+FFFD, and a recording id that was not valid UTF-8 carries `id_bytes_hex` with its bytes.
+    """
+    return json.dumps(_strict(data), indent=2, allow_nan=False)
 
 
 def _warn_skipped(audio: Path, error: OSError) -> None:

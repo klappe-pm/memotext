@@ -92,7 +92,9 @@ class Recording:
         """Return a JSON ready dictionary.
 
         `recorded_at` is an ISO 8601 string and paths are strings. Without `include_transcript`
-        the `transcript` key is left out and only `transcript_source` remains.
+        the `transcript` key is left out and only `transcript_source` remains. When the file name
+        is not valid UTF-8, `id_bytes_hex` holds the raw bytes of the id as hexadecimal text; the
+        key is absent otherwise.
         """
         data: dict[str, Any] = {
             "id": self.id,
@@ -105,6 +107,12 @@ class Recording:
         }
         if include_transcript:
             data["transcript"] = self.transcript_text
+        try:
+            self.id.encode("utf-8")
+        except UnicodeEncodeError:
+            # The file name was not valid UTF-8, so the string holds lone surrogates that a
+            # strict JSON decoder rejects. The bytes let a caller find the file anyway.
+            data["id_bytes_hex"] = os.fsencode(self.id).hex()
         return data
 
 
