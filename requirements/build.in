@@ -1,2 +1,3 @@
+# The only tools the build job installs. pip-compile turns this file into build.txt with hashes.
 build
 hatchling>=1.27,<2

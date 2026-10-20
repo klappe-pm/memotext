@@ -49,7 +49,13 @@ path = "voicememos/__init__.py"
 packages = ["voicememos"]
 
 [tool.hatch.build.targets.sdist]
-include = ["/voicememos", "/tests", "/README.md", "/LICENSE", "/pyproject.toml"]
+include = [
+    "/voicememos",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -74,6 +80,6 @@ select = ["E", "F", "I", "UP", "B", "SIM", "W", "S", "RUF"]
 "tests/**" = ["S101"]
 
 [tool.mypy]
-python_version = "3.11"
 strict = true
+python_version = "3.11"
 files = ["voicememos"]
