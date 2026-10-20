@@ -8,7 +8,7 @@ Lessons that take you through a task from start to finish, for someone new to th
 
 ## how-to-guides
 
-Recipes for a specific development goal. [run the tests](how-to-guides/run-the-tests.md) covers the suite, coverage, lint and type checks, and [build a synthetic recording](how-to-guides/build-a-synthetic-recording.md) covers making fixtures without a real Voice Memos file. Index: [how-to guides](how-to-guides/README.md).
+Recipes for a specific development goal. [run the tests](how-to-guides/run-the-tests.md) covers the suite, coverage, lint and type checks, and [build a synthetic recording](how-to-guides/build-a-synthetic-recording.md) covers making fixtures without a real Voice Memos file, and [release](how-to-guides/release.md) publishes a version to PyPI through trusted publishing. Index: [how-to guides](how-to-guides/README.md).
 
 ## reference
 

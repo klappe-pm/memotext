@@ -6,3 +6,4 @@ How-to guides are recipes for a development goal. Each one assumes you have the 
 
 - [run the tests](run-the-tests.md): the test suite, coverage, the lint and type checks, and how to run on Python 3.11.
 - [build a synthetic recording](build-a-synthetic-recording.md): make an `.m4a` fixture with a `tsrp` atom and a `manifest.plist` for a test, without a real recording.
+- [release](release.md): publish a version to PyPI through trusted publishing.
