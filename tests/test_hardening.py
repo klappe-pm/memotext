@@ -7,6 +7,7 @@ without the fix run under a deadline, so they fail fast instead.
 from __future__ import annotations
 
 import contextlib
+import errno
 import hashlib
 import json
 import os
@@ -17,6 +18,7 @@ import struct
 import subprocess
 import sys
 import time
+import warnings
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
 from pathlib import Path
@@ -1548,3 +1550,84 @@ class TestUndecodableNamesInComposition:
         expected.update(b"audio:%d\n" % len(audio) + audio)
         expected.update(b"composition/\xff.bin:1\nx")
         assert content_hash(next(iter_recordings(library))) == expected.hexdigest()
+
+
+# a composition folder that may be searched but not listed still yields its manifest
+
+
+def deny_listing(monkeypatch: pytest.MonkeyPatch, code: int = errno.EACCES) -> None:
+    """Make opening the composition folder fail as a folder with mode 0311 does.
+
+    The suite runs as root, which can open any folder, so the failure is simulated.
+    """
+    real = transcripts.open_dir
+
+    def deny(path: object, **kwargs: object) -> object:
+        if kwargs.get("parent") is None:
+            raise PermissionError(code, os.strerror(code))
+        return real(path, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(transcripts, "open_dir", deny)
+
+
+class TestSearchOnlyCompositionFolder:
+    def test_the_manifest_is_read_by_path_when_the_folder_cannot_be_opened(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        write_manifest(library / "m.composition", {"title": "Kept"})
+        deny_listing(monkeypatch)
+        manifest = read_manifest(library / "m.composition")
+        assert manifest is not None
+        assert manifest["title"] == "Kept"
+
+    def test_the_recording_is_listed_with_its_manifest_title(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / f"{STEM}.m4a", duration=1.0)
+        write_manifest(library / f"{STEM}.composition", {"title": "Kept"})
+        deny_listing(monkeypatch)
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            recordings = list(iter_recordings(library))
+        assert [r.title for r in recordings] == ["Kept"]
+
+    def test_a_symlinked_manifest_is_still_refused_on_the_fallback(
+        self, library: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        outside = tmp_path / "outside.plist"
+        outside.write_bytes(plistlib.dumps({"title": "Outside"}))
+        folder = library / "m.composition"
+        folder.mkdir()
+        (folder / "manifest.plist").symlink_to(outside)
+        deny_listing(monkeypatch)
+        assert read_manifest(folder) is None
+
+    def test_a_missing_manifest_is_absent_on_the_fallback(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        (library / "m.composition").mkdir()
+        deny_listing(monkeypatch)
+        assert read_manifest(library / "m.composition") is None
+
+    def test_a_refusal_that_is_not_access_denied_still_raises(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        write_manifest(library / "m.composition", {"title": "Kept"})
+        deny_listing(monkeypatch, errno.EPERM)
+        with pytest.raises(PermissionError):
+            read_manifest(library / "m.composition")
+
+    def test_a_readable_folder_still_opens_the_manifest_through_the_descriptor(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        write_manifest(library / "m.composition", {"title": "Kept"})
+        paths: list[object] = []
+        real = transcripts.open_regular
+
+        def spy(path: object, **kwargs: object) -> object:
+            paths.append(path)
+            return real(path, **kwargs)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(transcripts, "open_regular", spy, raising=False)
+        assert read_manifest(library / "m.composition") == {"title": "Kept"}
+        assert paths == []

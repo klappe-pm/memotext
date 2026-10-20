@@ -12,6 +12,7 @@ are inferred; see the file formats reference page.
 
 from __future__ import annotations
 
+import errno
 import json
 import os
 import plistlib
@@ -20,7 +21,15 @@ from pathlib import Path
 from typing import Any
 
 from voicememos.mp4 import read_tsrp_payload
-from voicememos.safeio import ABSENT_ERRORS, close_dir, is_real_dir, open_child, open_dir
+from voicememos.safeio import (
+    ABSENT_ERRORS,
+    DirRef,
+    close_dir,
+    is_real_dir,
+    open_child,
+    open_dir,
+    open_regular,
+)
 
 SOURCE_TSRP = "tsrp"
 SOURCE_PLIST = "plist"
@@ -201,22 +210,36 @@ def read_manifest(composition_path: Path) -> dict[str, Any] | None:
     is larger than 16 MiB, is not a valid plist, or its top level is not a dictionary. Whatever
     exception the plist parser raises on a hostile file is treated as an invalid plist. An `OSError`
     such as a permission error is not caught, so a blocked folder is never mistaken for a memo
-    without metadata.
+    without metadata. A folder that may be searched but not opened (`EACCES`) has its manifest
+    opened by path instead, still without following a symlink.
     """
     if not is_real_dir(composition_path):
         return None
     # The folder is opened without following a symlink, and the manifest is opened inside it by
     # descriptor. A folder swapped for a symlink after the check above is refused, not followed.
+    folder: DirRef | None
     try:
         folder = open_dir(composition_path)
     except ABSENT_ERRORS:
         return None
+    except PermissionError as exc:
+        if exc.errno != errno.EACCES:
+            raise
+        # A folder with search permission only (mode 0311) cannot be opened for reading, but the
+        # manifest inside it can still be opened by name. The final component is still opened with
+        # `O_NOFOLLOW`, so a symlinked manifest is refused; only the swap protection for the folder
+        # itself is lost, and only for a folder this process may not list.
+        folder = None
     try:
-        f = open_child(folder, "manifest.plist")
+        if folder is None:
+            f = open_regular(composition_path / "manifest.plist")
+        else:
+            f = open_child(folder, "manifest.plist")
     except ABSENT_ERRORS:
         return None
     finally:
-        close_dir(folder)
+        if folder is not None:
+            close_dir(folder)
     try:
         with f:
             if os.fstat(f.fileno()).st_size > _MAX_MANIFEST_BYTES:
