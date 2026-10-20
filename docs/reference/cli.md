@@ -20,7 +20,9 @@ voicememos [--version] <command> [options]
 
 | option | effect |
 | --- | --- |
-| `--spotlight` | when no known path is readable, also ask Spotlight for candidate folders; macOS only |
+| `--spotlight` | when no known path is readable, also ask Spotlight for candidate folders under `~/Library` that match a known Voice Memos container; macOS only |
+
+When Spotlight chose the folder, `list` and `show` print `voicememos: using <path> (found by Spotlight)` on standard error, so a script that reads standard output is not disturbed, and `probe` appends `(chosen by Spotlight)` to its `library:` line.
 
 ## probe
 
@@ -31,13 +33,14 @@ Probes the five known paths. Plain output is a table with the columns `STATE`, `
 ```json
 {
   "library": "/path/to/Recordings",
+  "library_source": "known-path",
   "paths": [
     {"path": "/path/to/Recordings", "state": "readable", "recording_count": 2, "detail": null}
   ]
 }
 ```
 
-`library` is null when nothing is readable. `state` is one of `missing`, `readable`, `blocked` and `empty`.
+`library` is null when nothing is readable. `library_source` is `known-path` when one of the five known paths was chosen, `spotlight` when Spotlight chose the folder, and null when nothing is readable. `state` is one of `missing`, `readable`, `blocked` and `empty`.
 
 ## list
 

@@ -100,12 +100,22 @@ def _table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
     return "\n".join(lines)
 
 
+def _chosen_by_spotlight(found: Path) -> bool:
+    """True if `found` is not one of the known paths, so only Spotlight can have chosen it."""
+    return found not in {probe.path for probe in probe_library()}
+
+
 def _library_for(explicit: str | None, spotlight: bool) -> Path:
     """Resolve the folder to read, or raise a library error that says why none was found."""
     if explicit:
         return Path(explicit).expanduser()
     found = find_library(spotlight=spotlight)
     if found is not None:
+        if spotlight and _chosen_by_spotlight(found):
+            print(
+                f"voicememos: using {printable(str(found))} (found by Spotlight)",
+                file=sys.stderr,
+            )
         return found
     blocked = [p for p in probe_library() if p.state is PathState.BLOCKED]
     if blocked:
@@ -122,9 +132,12 @@ def _library_for(explicit: str | None, spotlight: bool) -> Path:
 def _cmd_probe(args: argparse.Namespace) -> int:
     probes = probe_library()
     found = find_library(spotlight=args.spotlight)
+    by_spotlight = found is not None and found not in {p.path for p in probes}
+    source = None if found is None else ("spotlight" if by_spotlight else "known-path")
     if args.json:
         payload = {
             "library": str(found) if found else None,
+            "library_source": source,
             "paths": [p.to_dict() for p in probes],
         }
         print(_dump(payload))
@@ -140,7 +153,11 @@ def _cmd_probe(args: argparse.Namespace) -> int:
         print(_table(("STATE", "RECORDINGS", "PATH"), rows))
         if any(p.state is PathState.BLOCKED for p in probes):
             print(f"\n{FULL_DISK_ACCESS_HINT}")
-        print(f"\nlibrary: {printable(str(found))}" if found else "\nlibrary: none readable")
+        if found:
+            note = " (chosen by Spotlight)" if by_spotlight else ""
+            print(f"\nlibrary: {printable(str(found))}{note}")
+        else:
+            print("\nlibrary: none readable")
     return EXIT_OK if found else EXIT_ERROR
 
 

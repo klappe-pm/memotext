@@ -51,3 +51,12 @@ A permission error that appears part way through the listing is also `blocked`.
 | `mdfind 'kMDItemContentType == "com.apple.m4a-audio" && kMDItemPath == "*VoiceMemos*"'` | inferred; assumes the path of a recording mentions VoiceMemos |
 
 Neither query has been run against a real Spotlight index while writing this package. The search runs only on macOS, only when `mdfind` is found, and only when `find_library(spotlight=True)` or `--spotlight` asks for it. It runs `mdfind` with a 30 second timeout and treats any failure as no results. The candidates are probed like any other path and ranked by recording count; recency is not used.
+
+`find_library` considers a candidate only when it lies inside one of four containers under `~/Library`, compared without regard to case:
+
+- `Group Containers/group.com.apple.VoiceMemos.shared`
+- `Mobile Documents/com~apple~VoiceMemos`
+- `Containers/com.apple.VoiceMemos`
+- `Application Support/com.apple.voicememos`
+
+The path as Spotlight reported it and the same path with symlinks resolved must both lie inside one of them, and the path may not contain `..`. A folder that Spotlight indexed elsewhere whose path merely contains "VoiceMemos", such as `~/Downloads/VoiceMemos-shared`, is never adopted, because the first folder with recordings in it would otherwise become the one `list` and `show` read. `spotlight_search` itself still returns every hit; the filter is `voicememos.discovery.is_voicememos_container`, applied by `find_library`.

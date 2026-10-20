@@ -12,7 +12,7 @@ voicememos lists the recordings folder, opens the `.m4a` files and the `manifest
 - It does not write, move or delete any file, and it creates no configuration, cache or state file.
 - It does not transcribe audio or send audio or text to any service.
 - It does not change a permission, open System Settings or request elevated rights.
-- It runs no program except `mdfind`. That program is called as `/usr/bin/mdfind`, not found through `PATH`, so a program of the same name elsewhere is never run. It is called with a fixed argument list, never through a shell, with a 30 second timeout, only on macOS, and only when asked for with `--spotlight` or `spotlight=True`.
+- It runs no program except `mdfind`. That program is called as `/usr/bin/mdfind`, not found through `PATH`, so a program of the same name elsewhere is never run. It is called with a fixed argument list, never through a shell, with a 30 second timeout, only on macOS, and only when asked for with `--spotlight` or `spotlight=True`. Its results are not trusted either: only a folder inside a known Voice Memos container under `~/Library` can be chosen, and the command line says on standard error when Spotlight chose the folder.
 
 ## untrusted-files
 

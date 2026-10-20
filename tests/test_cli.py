@@ -80,6 +80,7 @@ class TestProbe:
         data = json.loads(out)
         assert code == 0
         assert data["library"] == str(populated)
+        assert data["library_source"] == "known-path"
         assert [p["state"] for p in data["paths"]][0] == "readable"
         assert len(data["paths"]) == len(discovery.KNOWN_PATHS)
 
@@ -87,17 +88,41 @@ class TestProbe:
         code, out, _ = run(capsys, "probe", "--json")
         assert code == 1
         assert json.loads(out)["library"] is None
+        assert json.loads(out)["library_source"] is None
+
+    def test_json_names_spotlight_as_the_source(
+        self, monkeypatch: pytest.MonkeyPatch, fake_home: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        extra = fake_home / "Library/Group Containers/group.com.apple.VoiceMemos.shared/Other"
+        extra.mkdir(parents=True)
+        make_m4a(extra / "a.m4a")
+        monkeypatch.setattr(discovery, "spotlight_search", lambda: [extra])
+        code, out, _ = run(capsys, "probe", "--spotlight", "--json")
+        assert code == 0
+        assert json.loads(out)["library_source"] == "spotlight"
+
+    def test_a_hostile_spotlight_hit_is_not_chosen(
+        self, monkeypatch: pytest.MonkeyPatch, fake_home: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        hostile = fake_home / "Downloads" / "VoiceMemos-shared"
+        hostile.mkdir(parents=True)
+        make_m4a(hostile / "a.m4a")
+        monkeypatch.setattr(discovery, "spotlight_search", lambda: [hostile])
+        code, out, _ = run(capsys, "probe", "--spotlight")
+        assert code == 1
+        assert "library: none readable" in out
 
     def test_spotlight_flag_is_passed_through(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, monkeypatch: pytest.MonkeyPatch, fake_home: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        extra = tmp_path / "elsewhere"
-        extra.mkdir()
+        extra = fake_home / "Library/Group Containers/group.com.apple.VoiceMemos.shared/Other"
+        extra.mkdir(parents=True)
         make_m4a(extra / "a.m4a")
         monkeypatch.setattr(discovery, "spotlight_search", lambda: [extra])
         code, out, _ = run(capsys, "probe", "--spotlight")
         assert code == 0
         assert f"library: {extra}" in out
+        assert "chosen by Spotlight" in out
 
 
 class TestList:
@@ -207,15 +232,17 @@ class TestList:
         assert "a" in out
 
     def test_spotlight_flag_finds_a_library_elsewhere(
-        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+        self, monkeypatch: pytest.MonkeyPatch, fake_home: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        extra = tmp_path / "elsewhere"
-        extra.mkdir()
+        extra = fake_home / "Library/Group Containers/group.com.apple.VoiceMemos.shared/Other"
+        extra.mkdir(parents=True)
         make_m4a(extra / "only.m4a")
         monkeypatch.setattr(discovery, "spotlight_search", lambda: [extra])
-        code, out, _ = run(capsys, "list", "--spotlight")
+        code, out, err = run(capsys, "list", "--spotlight")
         assert code == 0
         assert "only" in out
+        assert f"using {extra}" in err
+        assert "found by Spotlight" in err
 
 
 class TestShow:

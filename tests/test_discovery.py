@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from types import TracebackType
 
@@ -35,6 +35,16 @@ def add_audio(folder: Path, *names: str) -> None:
 
 def fail_which(name: str) -> str:
     raise AssertionError("mdfind must be called by absolute path, not looked up on PATH")
+
+
+CONTAINER = Path("Library/Group Containers/group.com.apple.VoiceMemos.shared")
+
+
+def container_folder(home: Path, name: str) -> Path:
+    """Make a folder under the Voice Memos group container, which Spotlight results may use."""
+    folder = home / CONTAINER / name
+    folder.mkdir(parents=True)
+    return folder
 
 
 class RaisingScandir:
@@ -271,13 +281,11 @@ class TestFindLibrary:
         assert find_library([tmp_path / "missing"]) is None
 
     def test_spotlight_picks_the_readable_folder_with_most_recordings(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, fake_home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        small = tmp_path / "small"
-        big = tmp_path / "big"
-        empty = tmp_path / "empty"
-        for folder in (small, big, empty):
-            folder.mkdir()
+        small = container_folder(fake_home, "small")
+        big = container_folder(fake_home, "big")
+        empty = container_folder(fake_home, "empty")
         add_audio(small, "a.m4a")
         add_audio(big, "a.m4a", "b.m4a", "c.m4a")
         monkeypatch.setattr(
@@ -286,12 +294,10 @@ class TestFindLibrary:
         assert find_library([tmp_path / "missing"], spotlight=True) == big
 
     def test_spotlight_ties_break_by_path(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+        self, fake_home: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        a = tmp_path / "a"
-        b = tmp_path / "b"
-        a.mkdir()
-        b.mkdir()
+        a = container_folder(fake_home, "a")
+        b = container_folder(fake_home, "b")
         add_audio(a, "1.m4a")
         add_audio(b, "1.m4a")
         monkeypatch.setattr(discovery, "spotlight_search", lambda: [b, a])
@@ -382,3 +388,72 @@ class TestSpotlightSearch:
 
         monkeypatch.setattr(subprocess, "run", boom)
         assert spotlight_search() == []
+
+
+def canned_mdfind(output: str) -> Callable[[list[str]], str]:
+    return lambda args: output
+
+
+class TestSpotlightCandidatesAreConfined:
+    def test_a_folder_outside_library_is_not_adopted(
+        self, fake_home: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        hostile = fake_home / "Downloads" / "VoiceMemos-x"
+        hostile.mkdir(parents=True)
+        add_audio(hostile, "a.m4a")
+        monkeypatch.setattr(
+            discovery,
+            "_run_mdfind",
+            canned_mdfind(f"{hostile}/a.m4a\n{hostile}/CloudRecordings.db\n"),
+        )
+        assert find_library(spotlight=True) is None
+
+    def test_a_folder_in_a_group_container_is_adopted(
+        self, fake_home: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        folder = container_folder(fake_home, "Moved")
+        add_audio(folder, "a.m4a")
+        monkeypatch.setattr(discovery, "_run_mdfind", canned_mdfind(f"{folder}/a.m4a\n"))
+        assert find_library(spotlight=True) == folder
+
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            "Library/Group Containers/group.com.apple.VoiceMemos.shared/Recordings2",
+            "Library/Mobile Documents/com~apple~VoiceMemos/Other",
+            "Library/Containers/com.apple.VoiceMemos/Data/Elsewhere",
+            "Library/Application Support/com.apple.voicememos/Other",
+        ],
+    )
+    def test_each_known_container_pattern_is_accepted(self, fake_home: Path, relative: str) -> None:
+        assert discovery.is_voicememos_container(fake_home / relative)
+
+    @pytest.mark.parametrize(
+        "relative",
+        [
+            "Downloads/VoiceMemos-shared",
+            "Library/Caches/VoiceMemos-x",
+            "Library/Group Containers/group.com.apple.VoiceMemos.shared-evil/Recordings",
+            "Library/Group Containers/group.com.example.VoiceMemos.shared/Recordings",
+            "Library/Group Containers/group.com.apple.VoiceMemos.shared/../../../Downloads/x",
+            "Library",
+            "",
+        ],
+    )
+    def test_other_paths_are_refused(self, fake_home: Path, relative: str) -> None:
+        assert not discovery.is_voicememos_container(fake_home / relative)
+
+    def test_a_path_outside_the_home_is_refused(self, tmp_path: Path) -> None:
+        elsewhere = tmp_path / "Library/Group Containers/group.com.apple.VoiceMemos.shared/R"
+        assert not discovery.is_voicememos_container(elsewhere)
+
+    def test_a_symlink_that_leaves_library_is_refused(
+        self, fake_home: Path, tmp_path: Path
+    ) -> None:
+        target = tmp_path / "elsewhere"
+        target.mkdir()
+        add_audio(target, "a.m4a")
+        link = fake_home / CONTAINER / "link"
+        link.parent.mkdir(parents=True)
+        link.symlink_to(target)
+        assert not discovery.is_voicememos_container(link)

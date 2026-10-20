@@ -78,7 +78,7 @@ Raises `FileNotFoundError` if the audio file is gone, `UnsafeFileError` if it is
 
 `find_library(paths: Iterable[str | PathLike[str]] | None = None, *, spotlight: bool = False) -> Path | None`
 
-Returns the first path in the `readable` state, with `~` expanded, or None. Blocked, empty and missing paths are skipped. With `paths=None`, `KNOWN_PATHS` is used. With `spotlight=True`, and only when no listed path is readable, the folders from `spotlight_search` are probed and the readable one with the most recordings is returned, ties broken by path. See [library states](library-states.md).
+Returns the first path in the `readable` state, with `~` expanded, or None. Blocked, empty and missing paths are skipped. With `paths=None`, `KNOWN_PATHS` is used. With `spotlight=True`, and only when no listed path is readable, the folders from `spotlight_search` that lie inside a known Voice Memos container under `~/Library` are probed and the readable one with the most recordings is returned, ties broken by path. A folder elsewhere is never adopted, however its path is spelled. See [library states](library-states.md).
 
 ## probe-library
 

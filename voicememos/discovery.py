@@ -29,6 +29,14 @@ KNOWN_PATHS: tuple[Path, ...] = (
 
 AUDIO_SUFFIX = ".m4a"
 
+_CONTAINER_PREFIXES: tuple[tuple[str, ...], ...] = (
+    ("Group Containers", "group.com.apple.VoiceMemos.shared"),
+    ("Mobile Documents", "com~apple~VoiceMemos"),
+    ("Containers", "com.apple.VoiceMemos"),
+    ("Application Support", "com.apple.voicememos"),
+)
+"""The places under `~/Library` where Voice Memos keeps data, compared without regard to case."""
+
 MDFIND = "/usr/bin/mdfind"
 """The Spotlight command line program, called by absolute path."""
 
@@ -157,6 +165,38 @@ def spotlight_search(runner: Runner | None = None) -> list[Path]:
     return folders
 
 
+def _under_container(path: Path, library: Path) -> bool:
+    try:
+        parts = path.relative_to(library).parts
+    except ValueError:
+        return False
+    if ".." in parts:
+        return False
+    folded = tuple(part.casefold() for part in parts)
+    return any(
+        folded[: len(prefix)] == tuple(part.casefold() for part in prefix)
+        for prefix in _CONTAINER_PREFIXES
+    )
+
+
+def is_voicememos_container(path: PathLike) -> bool:
+    """True if `path` is, or lies inside, a known Voice Memos container under `~/Library`.
+
+    The known containers are `Group Containers/group.com.apple.VoiceMemos.shared`,
+    `Mobile Documents/com~apple~VoiceMemos`, `Containers/com.apple.VoiceMemos` and
+    `Application Support/com.apple.voicememos`. Both the path as given and the path with symlinks
+    resolved must lie there, and the path may not contain `..`. A folder that merely has
+    "VoiceMemos" in its name, such as `~/Downloads/VoiceMemos-shared`, is not a container.
+    """
+    library = Path("~/Library").expanduser()
+    if not library.is_absolute():
+        return False
+    candidate = Path(path)
+    return _under_container(candidate, library) and _under_container(
+        Path(os.path.realpath(candidate)), Path(os.path.realpath(library))
+    )
+
+
 def find_library(
     paths: Iterable[PathLike] | None = None, *, spotlight: bool = False
 ) -> Path | None:
@@ -165,7 +205,9 @@ def find_library(
     Only a folder in the `READABLE` state counts as found. A blocked or empty folder is skipped;
     call `probe_library` to see why nothing was found. If no listed path is readable and
     `spotlight` is true, the folders from `spotlight_search` are probed and the readable one
-    with the most recordings wins. The Spotlight pass never runs unless asked for.
+    with the most recordings wins. The Spotlight pass never runs unless asked for. Only a
+    candidate that `is_voicememos_container` accepts is considered, so a folder elsewhere that
+    Spotlight indexed, and whose path happens to contain "VoiceMemos", is never adopted.
     """
     probes = probe_library(paths)
     for probe in probes:
@@ -173,7 +215,11 @@ def find_library(
             return probe.path
     if spotlight:
         seen = {p.path for p in probes}
-        extra = [probe_path(c) for c in spotlight_search() if c not in seen]
+        extra = [
+            probe_path(c)
+            for c in spotlight_search()
+            if c not in seen and is_voicememos_container(c)
+        ]
         readable = [p for p in extra if p.state is PathState.READABLE]
         if readable:
             readable.sort(key=lambda p: (-p.recording_count, str(p.path)))
