@@ -18,6 +18,7 @@ import struct
 import subprocess
 import sys
 import time
+import unicodedata
 import warnings
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -1631,3 +1632,102 @@ class TestSearchOnlyCompositionFolder:
         monkeypatch.setattr(transcripts, "open_regular", spy, raising=False)
         assert read_manifest(library / "m.composition") == {"title": "Kept"}
         assert paths == []
+
+
+# every Default_Ignorable_Code_Point, unassigned, private use and noncharacter code point is escaped
+
+# The Default_Ignorable_Code_Point ranges of Unicode 15.0 (DerivedCoreProperties.txt). The module
+# under test keeps its own copy; this one is written out again so that a slip in one shows up.
+DEFAULT_IGNORABLE_RANGES = (
+    (0x00AD, 0x00AD),
+    (0x034F, 0x034F),
+    (0x061C, 0x061C),
+    (0x115F, 0x1160),
+    (0x17B4, 0x17B5),
+    (0x180B, 0x180F),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x206F),
+    (0x3164, 0x3164),
+    (0xFE00, 0xFE0F),
+    (0xFEFF, 0xFEFF),
+    (0xFFA0, 0xFFA0),
+    (0xFFF0, 0xFFF8),
+    (0x1BCA0, 0x1BCA3),
+    (0x1D173, 0x1D17A),
+    (0xE0000, 0xE0FFF),
+)
+NONCHARACTERS = [
+    *range(0xFDD0, 0xFDF0),
+    *(plane + low for plane in range(0, 0x110000, 0x10000) for low in (0xFFFE, 0xFFFF)),
+]
+SAMPLED_UNASSIGNED = [
+    0x0378,
+    0x0380,
+    0x2065,
+    0x2FE0,
+    0x1FFFF,
+    0x2FA20,
+    0xE00FF,
+    0xE01F0,
+    0x3FFFD,
+    0xDFFFF,
+]
+SAMPLED_PRIVATE_USE = [0xE000, 0xF8FF, 0xF0000, 0xFFFFD, 0x100000, 0x10FFFD]
+CONTEXT_DEPENDENT = {0xFE0E, 0xFE0F, 0x200D}
+
+
+def escaped(code: int) -> bool:
+    text = "a" + chr(code) + "b"
+    out = printable(text)
+    return out != text and chr(code) not in out and out.isascii()
+
+
+class TestEveryInvisibleOrUndefinedCodePoint:
+    def test_every_default_ignorable_code_point_is_escaped(self) -> None:
+        missed = [
+            hex(code)
+            for low, high in DEFAULT_IGNORABLE_RANGES
+            for code in range(low, high + 1)
+            if code not in CONTEXT_DEPENDENT and not escaped(code)
+        ]
+        assert not missed, missed[:20]
+
+    @pytest.mark.parametrize(
+        "code",
+        [0x17B4, 0x17B5, 0x180F, 0x2065, 0xFFF0, 0xFFF8, 0xE0080, 0xE00FF, 0xE01F0, 0xE0FFF],
+        ids=hex,
+    )
+    def test_the_ranges_that_were_missed_before(self, code: int) -> None:
+        assert escaped(code)
+
+    def test_every_noncharacter_is_escaped(self) -> None:
+        assert len(NONCHARACTERS) == 66
+        missed = [hex(code) for code in NONCHARACTERS if not escaped(code)]
+        assert not missed, missed
+
+    @pytest.mark.parametrize("code", SAMPLED_UNASSIGNED, ids=hex)
+    def test_an_unassigned_code_point_is_escaped(self, code: int) -> None:
+        assert unicodedata.category(chr(code)) == "Cn"
+        assert escaped(code)
+
+    @pytest.mark.parametrize("code", SAMPLED_PRIVATE_USE, ids=hex)
+    def test_a_private_use_code_point_is_escaped(self, code: int) -> None:
+        assert unicodedata.category(chr(code)) == "Co"
+        assert escaped(code)
+
+    def test_no_code_point_in_a_checked_category_gets_through(self) -> None:
+        checked = {"Cc", "Cf", "Cn", "Co", "Zl", "Zp"}
+        missed = [
+            hex(code)
+            for code in range(0x110000)
+            if not 0xD800 <= code <= 0xDFFF
+            and code not in CONTEXT_DEPENDENT
+            and unicodedata.category(chr(code)) in checked
+            and not escaped(code)
+        ]
+        assert not missed, missed[:20]
+
+    def test_assigned_letters_marks_and_symbols_are_left_alone(self) -> None:
+        text = "A é 日本 ß ́ ☃ € ‰ Ω ๑ ، ◌"
+        assert printable(text) == text
