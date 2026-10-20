@@ -1385,3 +1385,89 @@ class TestStrictJson:
         assert_strictly_valid(data)
         assert "\\ud800" not in out
         assert "bad" in data["transcript"]  # type: ignore[index]
+
+
+# the walk and the openers on a platform without descriptor relative opens, and on a vanishing tree
+
+
+class TestPathFallbackAndVanishingEntries:
+    @pytest.fixture
+    def no_descriptors(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("voicememos.safeio.SUPPORTS_DIR_FD", False)
+
+    def test_open_dir_falls_back_to_paths(self, tmp_path: Path, no_descriptors: None) -> None:
+        folder = tmp_path / "real"
+        folder.mkdir()
+        (folder / "inner").mkdir()
+        link = tmp_path / "link"
+        make_symlink(link, folder)
+        assert open_dir(folder) == folder
+        assert open_dir("inner", parent=folder) == folder / "inner"
+        with pytest.raises(UnsafeFileError):
+            open_dir(link)
+        with pytest.raises(FileNotFoundError):
+            open_dir(tmp_path / "missing")
+        close_dir(folder)
+
+    def test_the_manifest_and_the_hash_still_work(
+        self, library: Path, no_descriptors: None
+    ) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+        write_manifest(library / "a.composition", {"title": "A"})
+        (library / "a.composition" / "sub").mkdir()
+        (library / "a.composition" / "sub" / "x.txt").write_bytes(b"x")
+        rec = one_recording(library)
+        assert rec.title == "A"
+        assert len(content_hash(rec)) == 64
+
+    def test_a_file_that_vanishes_during_the_walk_is_skipped(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+        composition = library / "a.composition"
+        (composition / "sub").mkdir(parents=True)
+        (composition / "sub" / "x.txt").write_bytes(b"x")
+        (composition / "y.txt").write_bytes(b"y")
+        rec = one_recording(library)
+        before = content_hash(rec)
+        real_dir, real_child = recording_module.open_dir, recording_module.open_child
+
+        def gone_dir(name: object, **kwargs: object) -> object:
+            if name == "sub":
+                raise FileNotFoundError(2, "gone")
+            return real_dir(name, **kwargs)  # type: ignore[arg-type]
+
+        def gone_file(ref: object, name: str) -> object:
+            if name == "y.txt":
+                raise FileNotFoundError(2, "gone")
+            return real_child(ref, name)  # type: ignore[arg-type]
+
+        monkeypatch.setattr(recording_module, "open_dir", gone_dir)
+        monkeypatch.setattr(recording_module, "open_child", gone_file)
+        assert content_hash(rec) != before
+        assert len(content_hash(rec)) == 64
+
+    def test_a_stream_that_refuses_to_reconfigure_is_left_alone(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        class Stubborn:
+            def reconfigure(self, *, errors: str) -> None:
+                raise ValueError(errors)
+
+            def write(self, text: str) -> int:
+                return len(text)
+
+            def flush(self) -> None:
+                pass
+
+        class Plain:
+            def write(self, text: str) -> int:
+                return len(text)
+
+            def flush(self) -> None:
+                pass
+
+        monkeypatch.setattr(sys, "stdout", Stubborn())
+        monkeypatch.setattr(sys, "stderr", Plain())
+        with pytest.raises(SystemExit):
+            main(["--version"])

@@ -84,7 +84,7 @@ def open_dir(path: Path | str, *, parent: DirRef | None = None) -> DirRef:
     `PermissionError` if it may not be opened. Close the result with `close_dir`.
     """
     if not SUPPORTS_DIR_FD:
-        full = Path(path) if parent is None else Path(parent) / path  # type: ignore[arg-type]
+        full = parent / path if isinstance(parent, Path) else Path(path)
         if not is_real_dir(full):
             if not os.path.lexists(full):
                 raise FileNotFoundError(errno.ENOENT, "no such folder", str(full))
