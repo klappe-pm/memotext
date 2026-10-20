@@ -1471,3 +1471,30 @@ class TestPathFallbackAndVanishingEntries:
         monkeypatch.setattr(sys, "stderr", Plain())
         with pytest.raises(SystemExit):
             main(["--version"])
+
+
+# a composition root that cannot be listed does not leak its descriptor
+
+
+def open_descriptors() -> int:
+    return len(os.listdir("/proc/self/fd"))
+
+
+@pytest.mark.skipif(not os.path.isdir("/proc/self/fd"), reason="needs /proc to count descriptors")
+class TestUnlistableRootDoesNotLeak:
+    def test_a_listing_failure_closes_the_root_descriptor(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / f"{STEM}.m4a", duration=1.0)
+        (library / f"{STEM}.composition").mkdir()
+        rec = next(iter_recordings(library))
+
+        def fail(ref: object) -> object:
+            raise OSError(5, "I/O error")
+
+        monkeypatch.setattr(recording_module, "scan_dir", fail)
+        before = open_descriptors()
+        for _ in range(20):
+            with pytest.raises(OSError, match="I/O error"):
+                content_hash(rec)
+        assert open_descriptors() == before

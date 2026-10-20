@@ -37,3 +37,4 @@ All notable changes to this project are documented in this file. The format foll
 - `list` no longer decodes the transcript payload it discards. With `transcripts=False`, `iter_recordings` detects the source from the presence of a non empty `tsrp` box and never calls the JSON decoder. `show` now reports the source it actually decoded.
 - `list` and the ambiguous id error of `show` print ids that differ only in Unicode normalisation (NFC against NFD) as `ascii()` literals, so look-alike ids can be told apart.
 - `--json` output is now valid for a strict decoder. A lone surrogate from a file name that is not UTF-8, or from a transcript, is replaced by U+FFFD, and a recording whose id was not valid UTF-8 carries a new `id_bytes_hex` field with the raw bytes of the id.
+- `content_hash` no longer leaks the descriptor of the composition folder when listing that folder fails. The root is closed on any exception before the error is raised.

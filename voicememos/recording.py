@@ -389,7 +389,12 @@ def _hash_composition(hasher: Any, composition: Path) -> None:
     frames: list[tuple[DirRef, str, list[tuple[str, bool]]]] = []
     seen = 0
     try:
-        frames.append((root, "", _ordered_entries(root)))
+        try:
+            root_entries = _ordered_entries(root)
+        except BaseException:
+            close_dir(root)
+            raise
+        frames.append((root, "", root_entries))
         while frames:
             ref, prefix, pending = frames[-1]
             if not pending:
