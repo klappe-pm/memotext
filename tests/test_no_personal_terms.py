@@ -26,8 +26,9 @@ FORBIDDEN = {
     "absolute home path": "/(?:Users|home)/" + r"[A-Za-z0-9._-]+",
 }
 
-# The published author appears where a licence and a package need one.
-ALLOWED = {"owner name": {"LICENSE", "pyproject.toml"}}
+# The published author appears where a licence and a package need one. PKG-INFO is the metadata
+# that the build writes into a source distribution from pyproject.toml.
+ALLOWED = {"owner name": {"LICENSE", "pyproject.toml", "PKG-INFO"}}
 
 SKIP_DIRS = {
     ".git",
