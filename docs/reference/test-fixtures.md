@@ -31,8 +31,8 @@ Tests that simulate a blocked folder patch `os.scandir` with a function or a `Ra
 
 ## Deadlines
 
-`tests/test_hardening.py` holds the hostile input tests. Those that would hang or run for minutes without their fix run inside its `deadline(seconds)` context manager, which uses `signal.setitimer` to raise `TimeoutError`, so a regression fails in seconds. The helper skips where `setitimer` is missing. Tests that need a FIFO or a symlink skip where the platform lacks them. Use `monkeypatch` for every patch so it is undone at the end of the test.
+`tests/test_hardening.py` holds the hostile input tests. Those that would hang or run for minutes without their fix run inside its `deadline(seconds)` context manager, which uses `signal.setitimer` to raise `TimeoutError`, so a regression fails in seconds. The helper skips where `setitimer` is missing. Tests that need a FIFO or a symlink skip where the platform lacks them. Use `monkeypatch` for every patch so it is undone at the end of the test. A test that needs a folder nested too deeply for a path uses the `deep_folder` helper, which makes and removes the levels one at a time relative to the current directory.
 
 ## Skips
 
-A skip must carry a reason. The skips today are the three tests that use a real unreadable directory (skipped as root or on Windows), the timezone tests (skipped without `time.tzset`), and the FIFO, symlink and deadline tests (skipped without `os.mkfifo`, symlink support or `signal.setitimer`).
+A skip must carry a reason. Tests marked `repo_only` skip when `.github/`, `docs/` or `CONTRIBUTING.md` is missing, which is the case in an extracted sdist; the hook that does this is in `tests/conftest.py`. The skips today are the three tests that use a real unreadable directory (skipped as root or on Windows), the timezone tests (skipped without `time.tzset`), and the FIFO, symlink and deadline tests (skipped without `os.mkfifo`, symlink support or `signal.setitimer`).
