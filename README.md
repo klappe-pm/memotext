@@ -54,7 +54,7 @@ Voicememos finds the recordings folder, lists every recording with its recorded 
 - **Blocked is not empty.** Listing the folder is what decides its state, so a missing Full Disk Access grant is never mistaken for an empty library.
 - **The transcripts iOS made.** The `tsrp` atom in the `.m4a` file is read first, then the manifest in the `.composition` folder.
 - **A command and a library.** `probe`, `list` and `show` on the command line, and `find_library`, `iter_recordings`, `read_transcript` and `content_hash` from Python.
-- **Safe with hostile files.** Symlinks and FIFOs are never followed or waited on, the MP4 and plist readers are bounded in memory and time, and every control, invisible, unassigned and private use character is escaped before it reaches a terminal, except the selector and joiner inside an emoji.
+- **Safe with hostile files.** Symlinks and FIFOs are never followed or waited on, the MP4 and plist readers are bounded in memory and time, and these are escaped before they reach a terminal: every control character, every format, unassigned and private use character, the line and paragraph separators, every default ignorable code point (the Hangul fillers and the variation selectors among them), every noncharacter, and the two blank drawing characters U+2800 and U+1D159. The variation selector and joiner inside an emoji are the only exception.
 - **Read only.** It writes no file, keeps no state, runs no program except `mdfind` when you ask for the Spotlight search, and uses no network.
 - **Nothing to install but Python.** Pure standard library at runtime, no dependencies.
 

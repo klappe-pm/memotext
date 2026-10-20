@@ -40,9 +40,17 @@ _NONCHARACTERS = (
     *(plane + low for plane in range(0, 0x110000, 0x10000) for low in (0xFFFE, 0xFFFF)),
 )
 
-_ESCAPED_CODES = frozenset(
-    code for low, high in _DEFAULT_IGNORABLE for code in range(low, high + 1)
-) | frozenset(_NONCHARACTERS)
+# Assigned characters that draw as blank although they are not Default_Ignorable: the braille
+# pattern blank and the musical null notehead. Left as they are they would let a name that holds
+# one print the same as a name without it. The Hangul fillers (U+115F, U+1160, U+3164, U+FFA0)
+# draw as blank too, and are already in the Default_Ignorable ranges above.
+_BLANK_DRAWING = (0x2800, 0x1D159)
+
+_ESCAPED_CODES = (
+    frozenset(code for low, high in _DEFAULT_IGNORABLE for code in range(low, high + 1))
+    | frozenset(_NONCHARACTERS)
+    | frozenset(_BLANK_DRAWING)
+)
 
 # Categories escaped whatever the code point: Cf (format, which includes the bidirectional
 # controls, the zero width characters, the invisible operators and the interlinear annotation
@@ -290,7 +298,9 @@ def printable(text: str, *, keep_newlines: bool = False) -> str:
     characters are every character in the Unicode categories `Cf` (format), `Cn` (unassigned), `Co`
     (private use), `Zl` and `Zp`; every code point with the Default_Ignorable_Code_Point property
     (the soft hyphen, the combining grapheme joiner, the Hangul fillers, the variation selectors,
-    the tag block U+E0000 to U+E0FFF and the rest); and every noncharacter.
+    the tag block U+E0000 to U+E0FFF and the rest); every noncharacter; and the two assigned
+    characters that draw as blank without being default ignorable, the braille pattern blank
+    (U+2800) and the musical null notehead (U+1D159).
 
     Three of those are kept where they make part of an emoji, so that a heart or a family prints
     as one picture: a variation selector 15 or 16 (U+FE0E, U+FE0F) straight after an emoji
