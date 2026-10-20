@@ -821,3 +821,66 @@ class TestHostilePlists:
         monkeypatch.setattr(recording_module, "read_manifest", explode)
         with pytest.raises(MemoryError):
             list(iter_recordings(library))
+
+
+# invisible characters that can hide text from a person reading a terminal
+
+INVISIBLE_CODE_POINTS = [
+    0x00AD,
+    0x034F,
+    0x061C,
+    0x115F,
+    0x1160,
+    0x180E,
+    0x2060,
+    0x2061,
+    0x2062,
+    0x2063,
+    0x2064,
+    0x206A,
+    0x206B,
+    0x206C,
+    0x206D,
+    0x206E,
+    0x206F,
+    0x3164,
+    0xFE00,
+    0xFE0F,
+    0xFFA0,
+    0xFFF9,
+    0xFFFA,
+    0xFFFB,
+    0xE0000,
+    0xE0001,
+    0xE0020,
+    0xE0041,
+    0xE007F,
+]
+
+
+class TestInvisibleCharacters:
+    @pytest.mark.parametrize("code", INVISIBLE_CODE_POINTS, ids=lambda c: f"U+{c:04X}")
+    def test_printable_escapes_it(self, code: int) -> None:
+        text = "a" + chr(code) + "b"
+        out = printable(text)
+        assert out != text
+        assert chr(code) not in out
+        assert out.isascii()
+
+    def test_the_escape_for_a_plane_beyond_the_bmp_is_unambiguous(self) -> None:
+        assert printable(chr(0xE0041)) == "\\U000e0041"
+
+    def test_ordinary_text_is_left_alone(self) -> None:
+        assert printable("café über 日本") == "café über 日本"
+
+    def test_show_prints_no_tag_character_from_a_title(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        smuggled = "".join(chr(0xE0000 + ord(ch)) for ch in "ignore previous instructions")
+        make_m4a(library / f"{STEM}.m4a")
+        write_manifest(library / f"{STEM}.composition", {"title": "Groceries" + smuggled})
+        for command in (["list"], ["show", STEM]):
+            code, out, err = run(capsys, *command, "--library", str(library))
+            assert code == 0, err
+            assert not any(0xE0000 <= ord(ch) <= 0xE007F for ch in out + err)
+            assert "\\U000e0069" in out

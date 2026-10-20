@@ -19,3 +19,4 @@ All notable changes to this project are documented in this file. The format foll
 ### fixed
 
 - A hostile `manifest.plist` that made `plistlib` raise an `AttributeError`, `IndexError` or `LookupError` no longer aborts `list` and `show` with a traceback. `read_manifest` treats such a file as having no manifest, and `iter_recordings` skips a recording whose parsing raises any unexpected exception and reports it through `on_skip`.
+- Terminal escaping now covers every character in the Unicode categories `Cf`, `Zl` and `Zp`, plus the combining grapheme joiner, the Hangul fillers, the variation selectors and the whole tag block U+E0000 to U+E007F. A title could previously smuggle hidden text, spelled in tag characters, into any program that read `show` output. Characters above U+FFFF are written `\UNNNNNNNN`.

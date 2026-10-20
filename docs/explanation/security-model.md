@@ -69,7 +69,9 @@ These are not capped, and a hostile library can use them.
 Titles, transcripts, file names and error messages come from files, and a terminal treats some bytes as commands. All human readable output goes through one function that escapes them.
 
 - C0 control characters U+0000 to U+001F (including ESC, BEL and newline), DEL (U+007F) and the C1 controls U+0080 to U+009F are printed as `\xNN`, with `\n`, `\r` and `\t` for those three.
-- The line and paragraph separators U+2028 and U+2029, the zero width characters U+200B to U+200F, the bidirectional controls U+202A to U+202E and U+2066 to U+2069, and U+FEFF are printed as `\uNNNN`.
+- Every character in the Unicode categories `Cf` (format), `Zl` (line separator) and `Zp` (paragraph separator) is escaped. That covers the line and paragraph separators U+2028 and U+2029, the soft hyphen U+00AD, the Arabic letter mark U+061C, the zero width characters U+200B to U+200F, the bidirectional controls U+202A to U+202E and U+2066 to U+2069, the invisible operators U+2060 to U+2064 and U+206A to U+206F, U+FEFF, the interlinear annotation marks U+FFF9 to U+FFFB and the tag characters U+E0001 and U+E0020 to U+E007F.
+- Characters in no such category that are still invisible or that alter display are escaped too: the combining grapheme joiner U+034F, the Hangul fillers U+115F, U+1160, U+3164 and U+FFA0, the variation selectors U+180B to U+180D, U+FE00 to U+FE0F and U+E0100 to U+E01EF, and the whole tag block U+E0000 to U+E007F. The tag block matters most: each tag character mirrors an ASCII letter, so a title can carry hidden text that a person does not see but a program that reads the output does.
+- A character below U+0100 is written `\xNN`, one up to U+FFFF is written `\uNNNN`, and one above is written `\UNNNNNNNN`.
 - A lone surrogate, which cannot be encoded, is printed as `?`.
 - Table cells in `list` and `probe` are escaped before they are laid out, so a cell never contains a line break and cannot forge another row.
 - In `show`, every field is escaped. The transcript keeps its line feeds so it stays readable; every other control character in it is still escaped.
