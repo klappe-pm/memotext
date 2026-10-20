@@ -67,7 +67,7 @@ Next to `<id>.m4a` there may be a folder `<id>.composition`. That the folder hol
 
 ## manifest-plist
 
-`manifest.plist` is a property list, either XML or binary; both are read with the standard library `plistlib` (defined). Voice Memos writes real files in whichever form it chooses; which one is not known. A file that is not a valid plist, or whose top level is not a dictionary, is treated as absent.
+`manifest.plist` is a property list, either XML or binary; both are read with the standard library `plistlib` (defined). Voice Memos writes real files in whichever form it chooses; which one is not known. A file that is not a valid plist, or whose top level is not a dictionary, is treated as absent. So is a file that makes the parser raise any exception other than an `OSError` or `MemoryError`.
 
 Keys read, all inferred:
 

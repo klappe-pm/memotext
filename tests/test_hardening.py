@@ -750,3 +750,74 @@ class TestLazyTranscripts:
             assert "long words" not in out
         assert all(kwargs.get("transcripts") is False for kwargs in seen)
         assert len(seen) == 2
+
+
+# hostile manifests that make plistlib raise unexpected exception types
+
+HOSTILE_PLISTS = [
+    pytest.param(
+        b'<plist version="1.0"><dict><key>creationDate</key><date>x</date></dict></plist>',
+        id="bad-date",
+    ),
+    pytest.param(b"<plist><key>a</key></plist>", id="key-outside-dict"),
+    pytest.param(b'<?xml version="1.0" encoding="nope"?><plist/>', id="unknown-encoding"),
+]
+
+
+class TestHostilePlists:
+    @pytest.mark.parametrize("data", HOSTILE_PLISTS)
+    def test_read_manifest_treats_the_file_as_no_manifest(
+        self, tmp_path: Path, data: bytes
+    ) -> None:
+        composition = tmp_path / "x.composition"
+        composition.mkdir()
+        (composition / "manifest.plist").write_bytes(data)
+        assert read_manifest(composition) is None
+
+    @pytest.mark.parametrize("data", HOSTILE_PLISTS)
+    def test_list_still_lists_the_good_memo(
+        self, library: Path, capsys: pytest.CaptureFixture[str], data: bytes
+    ) -> None:
+        make_m4a(library / "good.m4a")
+        make_m4a(library / "bad.m4a")
+        composition = library / "bad.composition"
+        composition.mkdir()
+        (composition / "manifest.plist").write_bytes(data)
+        code, out, err = run(capsys, "list", "--library", str(library))
+        assert code == 0, err
+        assert "good" in out
+        assert "bad" in out
+        assert "Traceback" not in err
+
+    def test_an_unexpected_error_skips_one_recording_and_reports_it(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "a.m4a")
+        make_m4a(library / "b.m4a")
+        write_manifest(library / "b.composition", {"title": "B"})
+        real = recording_module.read_manifest
+
+        def explode(path: Path) -> object:
+            if path.name == "b.composition":
+                raise AttributeError("hostile")
+            return real(path)
+
+        monkeypatch.setattr(recording_module, "read_manifest", explode)
+        skipped: list[tuple[Path, OSError]] = []
+        found = list(iter_recordings(library, on_skip=lambda p, e: skipped.append((p, e))))
+        assert [r.id for r in found] == ["a"]
+        assert [p.name for p, _ in skipped] == ["b.m4a"]
+        assert "AttributeError" in str(skipped[0][1])
+
+    def test_a_memory_error_is_not_swallowed(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "a.m4a")
+        write_manifest(library / "a.composition", {"title": "A"})
+
+        def explode(path: Path) -> object:
+            raise MemoryError
+
+        monkeypatch.setattr(recording_module, "read_manifest", explode)
+        with pytest.raises(MemoryError):
+            list(iter_recordings(library))

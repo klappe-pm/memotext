@@ -18,7 +18,6 @@ import plistlib
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from xml.parsers.expat import ExpatError
 
 from voicememos.mp4 import read_tsrp_payload
 from voicememos.safeio import ABSENT_ERRORS, is_real_dir, open_regular
@@ -199,9 +198,10 @@ def read_manifest(composition_path: Path) -> dict[str, Any] | None:
 
     Dates come back as `plistlib` returns them: naive datetimes that hold UTC. Returns None when
     the folder is a symlink, the file is absent, a symlink or not a regular file (a FIFO, say),
-    is larger than 16 MiB, is not a valid plist, or its top level is not a dictionary. A
-    permission error is not caught, so a blocked folder is never mistaken for a memo without
-    metadata.
+    is larger than 16 MiB, is not a valid plist, or its top level is not a dictionary. Whatever
+    exception the plist parser raises on a hostile file is treated as an invalid plist. An `OSError`
+    such as a permission error is not caught, so a blocked folder is never mistaken for a memo
+    without metadata.
     """
     if not is_real_dir(composition_path):
         return None
@@ -214,7 +214,12 @@ def read_manifest(composition_path: Path) -> dict[str, Any] | None:
             if os.fstat(f.fileno()).st_size > _MAX_MANIFEST_BYTES:
                 return None
             data = plistlib.load(f)
-    except (plistlib.InvalidFileException, ExpatError, ValueError, OverflowError, RecursionError):
+    except (OSError, MemoryError):
+        raise
+    except Exception:
+        # plistlib and its XML parser raise whatever a hostile file provokes: AttributeError,
+        # IndexError, LookupError and others, as well as the documented parse errors. None of
+        # them is a reason to stop a run, so any such file counts as having no manifest.
         return None
     if not isinstance(data, dict):
         return None

@@ -13,6 +13,9 @@ All notable changes to this project are documented in this file. The format foll
 - The `voicememos` command with `probe`, `list` and `show`, each with `--json`.
 - Documentation in two trees arranged by Diátaxis quadrant: `docs/` for people who use voicememos and `developer-docs/` for people who change it, including an explanation of where macOS keeps Voice Memos and why Full Disk Access matters, and a reference for the `tsrp` and plist formats that marks what is inferred.
 - Repository documents: `README.md`, `contributing.md`, `security.md` and `support.md`.
-
 - Hardening against hostile files, with regression tests in `tests/test_hardening.py`: every file is opened without following symlinks or blocking on a FIFO; MP4 walking is lazy and bounded (10,000 boxes, 8 levels, a 64 MiB and 1,000 hit cap on the byte scan); the manifest search is iterative with a depth limit of 32 and a budget of 100,000 values, and visits shared values once; non finite and oversized durations are ignored and JSON output forbids NaN; dates outside the supported range no longer raise; a recording that cannot be read is skipped with a warning instead of aborting the run; text from files is escaped before it reaches a terminal; `list` keeps no transcript text; `mdfind` is called by absolute path. [security model](docs/explanation/security-model.md) states each limit.
 - A file system fallback for the recording date that reads `st_birthtime` with `getattr` and falls back to the modification time, because the attribute exists on macOS but not on Linux.
+
+### fixed
+
+- A hostile `manifest.plist` that made `plistlib` raise an `AttributeError`, `IndexError` or `LookupError` no longer aborts `list` and `show` with a traceback. `read_manifest` treats such a file as having no manifest, and `iter_recordings` skips a recording whose parsing raises any unexpected exception and reports it through `on_skip`.

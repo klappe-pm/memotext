@@ -259,8 +259,10 @@ def iter_recordings(
     start with the date are in time order.
 
     If an `OSError` stops one recording from being read (a permission error, or a file that
-    vanished), that recording is skipped and the rest are still yielded. `on_skip` is called
-    with the audio path and the error; without it a `RecordingSkippedWarning` is issued.
+    vanished), that recording is skipped and the rest are still yielded. So is a recording whose
+    parsing raises any other exception, which `on_skip` receives as an `OSError` that names the
+    exception type. `on_skip` is called with the audio path and the error; without it a
+    `RecordingSkippedWarning` is issued.
 
     With `transcripts=False` each recording's `transcript_text` is None to save memory, while
     `transcript_source` still says where a transcript was found.
@@ -277,7 +279,16 @@ def iter_recordings(
                     composition if is_real_dir(composition) else None,
                     transcripts=transcripts,
                 )
-            except OSError as exc:
+            except MemoryError:
+                raise
+            except Exception as caught:
+                # An OSError is the expected reason. Any other exception comes from parsing a
+                # hostile file, and it must not end the run either.
+                exc = (
+                    caught
+                    if isinstance(caught, OSError)
+                    else OSError(None, f"unreadable ({type(caught).__name__})")
+                )
                 if on_skip is not None:
                     on_skip(audio, exc)
                 else:

@@ -49,7 +49,7 @@ Boxes are visited one at a time and the walk stops at the first match, so a file
 | values examined in one search | 100,000 |
 | times one list or dictionary is examined | once |
 
-The `tsrp` payload is decoded with the standard library JSON parser and the manifest with `plistlib`. Neither runs code. A parser failure, including exhausting the Python stack on deeply nested input, is caught and the file is treated as having no transcript. The manifest search is iterative, not recursive, so nesting cannot raise `RecursionError`. Because each list or dictionary is examined once, a binary plist in which many entries share the same object costs time in proportion to its distinct objects, not to the number of paths through it.
+The `tsrp` payload is decoded with the standard library JSON parser and the manifest with `plistlib`. Neither runs code. A parser failure of any kind is caught and the file is treated as having no transcript or no manifest. That covers exhausting the Python stack on deeply nested input and the odd exceptions that `plistlib` raises on a hostile file (an `AttributeError` from a malformed date, an `IndexError`, a `LookupError` from an unknown encoding name). Only an `OSError` such as a permission error, and `MemoryError`, are allowed to escape. The manifest search is iterative, not recursive, so nesting cannot raise `RecursionError`. Because each list or dictionary is examined once, a binary plist in which many entries share the same object costs time in proportion to its distinct objects, not to the number of paths through it.
 
 ### numbers-and-dates
 
@@ -83,6 +83,7 @@ A backslash in the source text is not escaped, so a title that literally contain
 - A permission error while reading one recording's files does not stop the run. The recording is skipped, a `RecordingSkippedWarning` is issued (the command line prints `voicememos: warning: skipped <path>: <reason>` on standard error), and the rest are listed. The command still exits 0, so a script that must notice skips should read standard error or call `iter_recordings` with `on_skip`.
 - A folder that exists and cannot be listed is never reported as missing or empty: it raises `LibraryBlockedError`, or is reported `blocked` by `probe`.
 - A file that vanishes between listing and reading is skipped the same way.
+- A recording whose parsing raises any other unexpected exception is skipped the same way. `on_skip` receives an `OSError` whose message names the exception type, so one hostile file never ends the run.
 
 ## privacy
 
