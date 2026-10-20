@@ -5,6 +5,7 @@ This page is the reference for the public Python API of the `voicememos` package
 ```python
 from voicememos import (
     KNOWN_PATHS,
+    CompositionLimitError,
     LibraryBlockedError,
     LibraryNotFoundError,
     PathProbe,
@@ -57,7 +58,7 @@ With `transcripts=False`, `transcript_text` is None for every recording to save 
 
 Raises `LibraryNotFoundError` when the folder is missing or is not a directory, and `LibraryBlockedError` when it exists but cannot be listed. Both are raised by the call itself, not by iterating. A malformed manifest or audio file does not raise; the affected fields are None or fall back.
 
-If an `OSError` stops one recording from being read, such as a permission error or a file that vanished after listing, that recording is skipped and the others are still yielded. `on_skip(audio_path, error)` is called for each skipped recording. Without `on_skip`, a `RecordingSkippedWarning` is issued, which Python prints on standard error.
+If an `OSError` stops one recording from being read, such as a permission error or a file that vanished after listing, that recording is skipped and the others are still yielded. So is a recording whose parsing raises any other exception (except `MemoryError`); `on_skip` then receives an `OSError` whose message names the exception type. `on_skip(audio_path, error)` is called for each skipped recording. Without `on_skip`, a `RecordingSkippedWarning` is issued, which Python prints on standard error.
 
 ## read-transcript
 
@@ -69,7 +70,9 @@ Reads the transcript from the files again. The `tsrp` atom in the audio file is 
 
 `content_hash(recording: Recording) -> str`
 
-Returns a SHA 256 hex digest (64 characters) of the audio file and of every file under the composition folder, in sorted relative path order. File sizes and relative names are part of the input; modification times are not. Symlinks and other files that are not regular files inside the composition folder are ignored. Raises `FileNotFoundError` if the audio file is gone, `UnsafeFileError` if it is a symlink or not a regular file, and `PermissionError` if a file cannot be read. A composition folder that has vanished, or is a symlink, is skipped.
+Returns a SHA 256 hex digest (64 characters) of the audio file and of every file under the composition folder, in sorted relative path order. File sizes and relative names are part of the input; modification times are not. Symlinks and other files that are not regular files inside the composition folder are ignored. The walk is iterative and holds the folders on its current path open as descriptors, so a folder swapped for a symlink during the walk is refused, not followed.
+
+Raises `FileNotFoundError` if the audio file is gone, `UnsafeFileError` if it is a symlink or not a regular file, and `PermissionError` (or another `OSError`) if a file cannot be read or a folder under the composition folder cannot be listed. A subfolder that cannot be listed is never skipped silently. Raises `CompositionLimitError` if the composition folder is nested more than 64 levels deep or holds more than 100,000 entries. A composition folder that has vanished, or is a symlink, is skipped.
 
 ## find-library
 
@@ -124,6 +127,7 @@ Asks Spotlight for candidate folders and returns the parent folder of each hit, 
 | `LibraryNotFoundError` | `VoiceMemosError`, `FileNotFoundError` | the recordings folder does not exist or is not a directory |
 | `LibraryBlockedError` | `VoiceMemosError`, `PermissionError` | the recordings folder exists but listing it failed |
 | `UnsafeFileError` | `VoiceMemosError`, `OSError` | `content_hash` was given a recording whose audio file is a symlink or not a regular file; parsers treat such a file as absent instead |
+| `CompositionLimitError` | `VoiceMemosError` | `content_hash` was given a recording whose composition folder is nested more than 64 levels deep or holds more than 100,000 entries |
 | `RecordingSkippedWarning` | `UserWarning` | issued by `iter_recordings` for a recording skipped because an `OSError` stopped it being read; a warning, not an exception |
 
 ## version

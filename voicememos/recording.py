@@ -11,16 +11,26 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from voicememos.discovery import AUDIO_SUFFIX, PathLike
 from voicememos.errors import (
+    CompositionLimitError,
     LibraryBlockedError,
     LibraryNotFoundError,
     RecordingSkippedWarning,
 )
 from voicememos.mp4 import read_duration_seconds
-from voicememos.safeio import ABSENT_ERRORS, is_real_dir, open_regular
+from voicememos.safeio import (
+    ABSENT_ERRORS,
+    DirRef,
+    close_dir,
+    is_real_dir,
+    open_child,
+    open_dir,
+    open_regular,
+    scan_dir,
+)
 from voicememos.textsafe import printable
 from voicememos.transcripts import (
     SOURCE_PLIST,
@@ -31,6 +41,9 @@ from voicememos.transcripts import (
 )
 
 COMPOSITION_SUFFIX = ".composition"
+
+_MAX_WALK_DEPTH = 64
+_MAX_WALK_ENTRIES = 100_000
 
 # Voice Memos names files "YYYYMMDD HHMMSS-UUID". The UUID part is inferred to be hex digits and
 # dashes. The time is inferred to be local time at the place of recording.
@@ -318,21 +331,82 @@ def read_transcript(recording: Recording) -> Transcript | None:
     return _read_transcript(recording.audio_path, manifest)
 
 
-def _hash_file(hasher: Any, label: str, path: Path) -> None:
-    with open_regular(path) as f:
-        hasher.update(f"{label}:{os.fstat(f.fileno()).st_size}\n".encode())
-        while chunk := f.read(65536):
-            hasher.update(chunk)
+def _hash_file(hasher: Any, label: str, f: BinaryIO) -> None:
+    hasher.update(f"{label}:{os.fstat(f.fileno()).st_size}\n".encode())
+    while chunk := f.read(65536):
+        hasher.update(chunk)
 
 
-def _composition_files(composition: Path) -> list[tuple[str, Path]]:
-    """List regular files under a composition folder, without following symlinks."""
-    found: list[tuple[str, Path]] = []
-    for directory, _, names in os.walk(composition, followlinks=False):
-        for name in names:
-            path = Path(directory) / name
-            found.append((path.relative_to(composition).as_posix(), path))
-    return sorted(found)
+def _hash_composition(hasher: Any, composition: Path) -> None:
+    """Hash every regular file under a composition folder, in the order of their relative names.
+
+    The walk is iterative, so nesting cannot exhaust the Python stack, and it holds the folders on
+    the current path open as descriptors, so a folder swapped for a symlink during the walk is
+    refused instead of followed. A folder or file that is a symlink, a FIFO or another special
+    kind is ignored, and one that vanished is skipped. A folder that cannot be listed raises its
+    `OSError`. A tree deeper than `_MAX_WALK_DEPTH` folders or holding more than
+    `_MAX_WALK_ENTRIES` entries raises `CompositionLimitError`.
+
+    Within a folder, files are taken by name and sub folders by name followed by a slash. That
+    gives the same order as sorting the full relative names, which keeps the digest stable.
+    """
+    try:
+        root = open_dir(composition)
+    except ABSENT_ERRORS:
+        return
+    # Each frame is a held folder, its relative prefix and its entries still to visit, in reverse.
+    frames: list[tuple[DirRef, str, list[tuple[str, bool]]]] = []
+    seen = 0
+    try:
+        frames.append((root, "", _ordered_entries(root)))
+        while frames:
+            ref, prefix, pending = frames[-1]
+            if not pending:
+                frames.pop()
+                close_dir(ref)
+                continue
+            name, is_folder = pending.pop()
+            seen += 1
+            if seen > _MAX_WALK_ENTRIES:
+                raise CompositionLimitError(
+                    f"composition folder holds more than {_MAX_WALK_ENTRIES} entries"
+                )
+            if is_folder:
+                if len(frames) > _MAX_WALK_DEPTH:
+                    raise CompositionLimitError(
+                        f"composition folder is nested more than {_MAX_WALK_DEPTH} levels deep"
+                    )
+                try:
+                    child = open_dir(name, parent=ref)
+                except ABSENT_ERRORS:
+                    continue
+                try:
+                    entries = _ordered_entries(child)
+                except BaseException:
+                    close_dir(child)
+                    raise
+                frames.append((child, f"{prefix}{name}/", entries))
+            else:
+                try:
+                    f = open_child(ref, name)
+                except ABSENT_ERRORS:
+                    continue
+                with f:
+                    _hash_file(hasher, f"composition/{prefix}{name}", f)
+    finally:
+        for ref, _, _ in frames:
+            close_dir(ref)
+
+
+def _ordered_entries(ref: DirRef) -> list[tuple[str, bool]]:
+    """List a held folder as `(name, is_folder)`, ordered so a walk visits the last item first.
+
+    The list is in reverse of the visiting order, so `pop()` takes the next item cheaply.
+    """
+    folders, files = scan_dir(ref)
+    keyed = [(f"{name}/", name, True) for name in folders] + [(n, n, False) for n in files]
+    keyed.sort(reverse=True)
+    return [(name, is_folder) for _, name, is_folder in keyed]
 
 
 def content_hash(recording: Recording) -> str:
@@ -342,16 +416,15 @@ def content_hash(recording: Recording) -> str:
     relative names mixed in. Modification times are left out, so copying or touching a file does
     not change the digest. Symlinks and other files that are not regular files inside the
     composition folder are ignored. Raises `FileNotFoundError` if the audio file is gone,
-    `UnsafeFileError` if it is a symlink or not a regular file, and `PermissionError` if a file
-    cannot be read.
+    `UnsafeFileError` if it is a symlink or not a regular file, `PermissionError` (or another
+    `OSError`) if a file or a folder under the composition folder cannot be read, and
+    `CompositionLimitError` if the composition folder is nested deeper than 64 levels or holds
+    more than 100,000 entries.
     """
     hasher = hashlib.sha256()
-    _hash_file(hasher, "audio", recording.audio_path)
+    with open_regular(recording.audio_path) as audio:
+        _hash_file(hasher, "audio", audio)
     composition = recording.composition_path
     if composition is not None and is_real_dir(composition):
-        for relative, path in _composition_files(composition):
-            try:
-                _hash_file(hasher, f"composition/{relative}", path)
-            except ABSENT_ERRORS:
-                continue
+        _hash_composition(hasher, composition)
     return hasher.hexdigest()

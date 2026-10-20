@@ -33,3 +33,12 @@ class LibraryBlockedError(VoiceMemosError, PermissionError):
     On macOS this is what a missing Full Disk Access grant looks like. The folder is present, so
     it is never reported as missing or empty.
     """
+
+
+class CompositionLimitError(VoiceMemosError):
+    """A composition folder is nested too deeply or holds too many entries to hash.
+
+    `content_hash` raises it when the folder is nested more than 64 levels deep or holds more than
+    100,000 entries. A real composition folder holds a few files, so a folder over either limit is
+    not a Voice Memos recording and its digest is refused rather than computed.
+    """

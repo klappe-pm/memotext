@@ -7,6 +7,7 @@ without the fix run under a deadline, so they fail fast instead.
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import json
 import os
 import plistlib
@@ -24,7 +25,12 @@ from tests.synthetic import box, make_m4a, mvhd, write_manifest
 from voicememos import mp4, transcripts
 from voicememos import recording as recording_module
 from voicememos.cli import _dump, main
-from voicememos.errors import RecordingSkippedWarning, UnsafeFileError
+from voicememos.errors import (
+    CompositionLimitError,
+    RecordingSkippedWarning,
+    UnsafeFileError,
+    VoiceMemosError,
+)
 from voicememos.mp4 import read_duration_seconds, read_tsrp_payload
 from voicememos.recording import Recording, content_hash, iter_recordings, local_time
 from voicememos.safeio import close_dir, is_real_dir, open_dir, open_regular, scan_dir
@@ -984,3 +990,151 @@ class TestFolderSwap:
             assert scan_dir(ref) == ([], ["manifest.plist"])
         finally:
             close_dir(ref)
+
+
+# content_hash walks a hostile composition folder safely
+
+
+@contextlib.contextmanager
+def deep_folder(root: Path, levels: int) -> Iterator[Path]:
+    """Create `levels` nested folders named `d` under `root`, and remove them afterwards.
+
+    Paths this deep exceed the operating system limit, so the folders are made and removed one
+    level at a time, relative to the current directory.
+    """
+    start = os.getcwd()
+    root.mkdir(exist_ok=True)
+    os.chdir(root)
+    made = 0
+    try:
+        for _ in range(levels):
+            os.mkdir("d")
+            os.chdir("d")
+            made += 1
+        os.chdir(root)
+        yield root
+    finally:
+        os.chdir(root)
+        for _ in range(made):
+            os.chdir("d")
+        for _ in range(made):
+            os.chdir("..")
+            os.rmdir("d")
+        os.chdir(start)
+
+
+def one_recording(library: Path) -> Recording:
+    return next(iter_recordings(library))
+
+
+class TestContentHashWalk:
+    def test_a_folder_nested_1100_levels_deep_raises_the_documented_error(
+        self, library: Path
+    ) -> None:
+        make_m4a(library / "deep.m4a", duration=1.0)
+        composition = library / "deep.composition"
+        with deep_folder(composition, 1100):
+            rec = one_recording(library)
+            with deadline(10.0):
+                with pytest.raises(CompositionLimitError):
+                    content_hash(rec)
+
+    def test_the_documented_error_is_a_voicememos_error(self) -> None:
+        assert issubclass(CompositionLimitError, VoiceMemosError)
+
+    def test_nesting_up_to_the_cap_is_hashed(self, library: Path) -> None:
+        make_m4a(library / "ok.m4a", duration=1.0)
+        composition = library / "ok.composition"
+        with deep_folder(composition, recording_module._MAX_WALK_DEPTH):
+            assert len(content_hash(one_recording(library))) == 64
+
+    def test_more_entries_than_the_cap_raise(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "wide.m4a", duration=1.0)
+        composition = library / "wide.composition"
+        composition.mkdir()
+        for index in range(6):
+            (composition / f"f{index}").write_bytes(b"x")
+        monkeypatch.setattr(recording_module, "_MAX_WALK_ENTRIES", 5)
+        with pytest.raises(CompositionLimitError):
+            content_hash(one_recording(library))
+        monkeypatch.setattr(recording_module, "_MAX_WALK_ENTRIES", 6)
+        assert len(content_hash(one_recording(library))) == 64
+
+    def test_an_unreadable_subfolder_raises_instead_of_being_skipped(
+        self, library: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+        composition = library / "a.composition"
+        (composition / "sub").mkdir(parents=True)
+        (composition / "sub" / "inner.txt").write_bytes(b"x")
+        (composition / "top.txt").write_bytes(b"y")
+        rec = one_recording(library)
+        real = os.scandir
+        calls: list[object] = []
+
+        def blocked_second(path: object) -> object:
+            calls.append(path)
+            if len(calls) == 2:
+                raise PermissionError(13, "Permission denied")
+            return real(path)  # type: ignore[call-overload]
+
+        monkeypatch.setattr(os, "scandir", blocked_second)
+        with pytest.raises(PermissionError):
+            content_hash(rec)
+        assert len(calls) == 2
+
+    def test_descriptors_are_released_after_an_error(self, library: Path) -> None:
+        make_m4a(library / "deep.m4a", duration=1.0)
+        composition = library / "deep.composition"
+        before = len(os.listdir("/proc/self/fd")) if os.path.isdir("/proc/self/fd") else None
+        with deep_folder(composition, 80):
+            rec = one_recording(library)
+            with pytest.raises(CompositionLimitError):
+                content_hash(rec)
+        if before is not None:
+            assert len(os.listdir("/proc/self/fd")) == before
+
+    def test_the_digest_follows_the_order_of_the_sorted_relative_names(self, library: Path) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+        composition = library / "a.composition"
+        files = {"a.txt": b"1", "a/b.txt": b"2", "a/c/d.txt": b"3", "a-b": b"4", "z": b"5"}
+        for relative, data in files.items():
+            path = composition / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        hasher = hashlib.sha256()
+        audio = (library / "a.m4a").read_bytes()
+        hasher.update(f"audio:{len(audio)}\n".encode() + audio)
+        for relative in sorted(files):
+            data = files[relative]
+            hasher.update(f"composition/{relative}:{len(data)}\n".encode() + data)
+        assert content_hash(one_recording(library)) == hasher.hexdigest()
+
+    def test_a_folder_swapped_for_a_symlink_after_the_check_is_not_hashed(
+        self, library: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        make_m4a(library / "a.m4a", duration=1.0)
+        composition = library / "a.composition"
+        composition.mkdir()
+        (composition / "inside.txt").write_bytes(b"inside")
+        rec = one_recording(library)
+        outside_dir = tmp_path / "outside"
+        outside_dir.mkdir()
+        (outside_dir / "secret.txt").write_bytes(b"outside")
+        audio_only = tmp_path / "audio-only"
+        audio_only.mkdir()
+        shutil.copy(library / "a.m4a", audio_only / "a.m4a")
+        expected = content_hash(one_recording(audio_only))
+        real = recording_module.is_real_dir
+
+        def racing(path: Path) -> bool:
+            ok: bool = real(path)
+            if ok and path == composition:
+                shutil.rmtree(composition)
+                make_symlink(composition, outside_dir)
+            return ok
+
+        monkeypatch.setattr(recording_module, "is_real_dir", racing)
+        assert content_hash(rec) == expected

@@ -58,12 +58,21 @@ The `tsrp` payload is decoded with the standard library JSON parser and the mani
 
 A manifest duration that is not a number, is a boolean, is negative, is not finite (`nan`, `inf`) or does not fit in a float is ignored, and the duration is read from the audio file instead. `Recording` refuses a non finite duration. JSON output is written with NaN and Infinity forbidden, so it is valid JSON for every parser. A date that cannot be converted to local time, such as year 1 or year 9999 near a timezone boundary, is kept in UTC instead of raising; a file time outside the supported range becomes 1970-01-01 UTC.
 
+### composition-folder-walk
+
+| limit | value |
+| --- | --- |
+| folder nesting depth under a composition folder | 64 |
+| entries (files and folders) examined in one walk | 100,000 |
+
+`content_hash` walks the composition folder iteratively, so deep nesting cannot raise `RecursionError`, and it holds only the folders on the current path open, at most 66 descriptors. A folder over either limit raises `CompositionLimitError`; a real composition folder holds a few files. A folder that cannot be listed raises its `OSError` instead of being skipped, because a hash that silently leaves out an unreadable subfolder would miss a change inside it.
+
 ## what-is-not-limited
 
 These are not capped, and a hostile library can use them.
 
 - The number of files in the library folder. `list` and `show` read every `.m4a` file.
-- The number of files under a composition folder, and the size of any file `content_hash` reads. Hashing streams each file in 64 KiB pieces, so memory stays small, but time grows with the data.
+- The size of any file `content_hash` reads. Hashing streams each file in 64 KiB pieces, so memory stays small, but time grows with the data. The shape of the composition folder is limited, as the next section says.
 - Memory while decoding a `tsrp` payload. A payload of 32 MiB of JSON can use several times that while it is parsed. `list` keeps no transcript text between recordings; `show` holds the text of the one recording it prints.
 - Time spent in the operating system reading a very large file from a slow disk or a stalled network volume.
 

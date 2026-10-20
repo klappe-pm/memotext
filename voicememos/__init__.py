@@ -14,7 +14,12 @@ from voicememos.discovery import (
     probe_path,
     spotlight_search,
 )
-from voicememos.errors import LibraryBlockedError, LibraryNotFoundError, VoiceMemosError
+from voicememos.errors import (
+    CompositionLimitError,
+    LibraryBlockedError,
+    LibraryNotFoundError,
+    VoiceMemosError,
+)
 from voicememos.recording import (
     Recording,
     Transcript,
@@ -27,6 +32,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "KNOWN_PATHS",
+    "CompositionLimitError",
     "LibraryBlockedError",
     "LibraryNotFoundError",
     "PathProbe",
