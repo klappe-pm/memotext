@@ -1253,3 +1253,59 @@ class TestListDoesNotDecodePayloads:
         assert code == 0
         assert "transcript source: plist" in out
         assert "fallback words" in out
+
+
+# ids that look the same can be told apart
+
+NFC_ID = "Café"
+NFD_ID = "Café"
+
+
+class TestLookAlikeIds:
+    @pytest.fixture
+    def twins(self, library: Path) -> Path:
+        assert NFC_ID != NFD_ID
+        try:
+            make_m4a(library / f"{NFC_ID}.m4a")
+            make_m4a(library / f"{NFD_ID}.m4a")
+        except OSError:
+            pytest.skip("the file system does not allow these names")
+        if len(list(library.iterdir())) != 2:
+            pytest.skip("the file system folds canonically equivalent names")
+        return library
+
+    def test_list_shows_both_ids_as_ascii_escapes(
+        self, twins: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        code, out, _ = run(capsys, "list", "--library", str(twins))
+        assert code == 0
+        assert ascii(NFC_ID) in out
+        assert ascii(NFD_ID) in out
+        assert ascii(NFC_ID) != ascii(NFD_ID)
+
+    def test_ids_that_are_not_look_alikes_are_left_alone(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / f"{NFC_ID}.m4a")
+        make_m4a(library / "plain.m4a")
+        _, out, _ = run(capsys, "list", "--library", str(library))
+        assert NFC_ID in out
+        assert "plain" in out
+        assert ascii(NFC_ID) not in out
+
+    def test_an_ambiguous_prefix_error_tells_the_ids_apart(
+        self, twins: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        code, _, err = run(capsys, "show", "Caf", "--library", str(twins))
+        assert code == 1
+        assert "ambiguous" in err
+        assert ascii(NFC_ID) in err
+        assert ascii(NFD_ID) in err
+
+    def test_show_finds_each_twin_by_its_exact_id(
+        self, twins: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        for wanted in (NFC_ID, NFD_ID):
+            code, out, err = run(capsys, "show", wanted, "--library", str(twins))
+            assert code == 0, err
+            assert f"id: {wanted}" in out

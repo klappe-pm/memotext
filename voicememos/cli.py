@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+import unicodedata
+from collections.abc import Iterable, Sequence
 from dataclasses import replace
 from pathlib import Path
 
@@ -85,6 +86,24 @@ def _warn_skipped(audio: Path, error: OSError) -> None:
         f"voicememos: warning: skipped {printable(str(audio))}: {printable(reason)}",
         file=sys.stderr,
     )
+
+
+def _look_alikes(ids: Iterable[str]) -> set[str]:
+    """Return the ids that equal another id once both are put in Unicode form NFC.
+
+    A file system that keeps names as written can hold a precomposed and a decomposed spelling of
+    the same word side by side. They print the same, so a table that shows both would hide that
+    they differ.
+    """
+    groups: dict[str, list[str]] = {}
+    for recording_id in ids:
+        groups.setdefault(unicodedata.normalize("NFC", recording_id), []).append(recording_id)
+    return {recording_id for group in groups.values() if len(group) > 1 for recording_id in group}
+
+
+def _label(recording_id: str, look_alikes: set[str]) -> str:
+    """The id as shown in a table or message: as `ascii()` when another id looks identical."""
+    return ascii(recording_id) if recording_id in look_alikes else recording_id
 
 
 def _table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
@@ -174,9 +193,10 @@ def _cmd_list(args: argparse.Namespace) -> int:
         data = [r.to_dict(include_transcript=False) for r in recordings]
         print(_dump(data))
         return EXIT_OK
+    look_alikes = _look_alikes(r.id for r in recordings)
     rows = [
         [
-            r.id,
+            _label(r.id, look_alikes),
             _format_recorded(r),
             _format_duration(r.duration_seconds),
             r.transcript_source or "none",
@@ -196,7 +216,8 @@ def _match(recordings: list[Recording], wanted: str) -> Recording:
     if len(prefixed) == 1:
         return prefixed[0]
     if prefixed:
-        ids = ", ".join(r.id for r in prefixed)
+        look_alikes = _look_alikes(r.id for r in recordings)
+        ids = ", ".join(_label(r.id, look_alikes) for r in prefixed)
         raise VoiceMemosError(f"id {wanted!r} is ambiguous, it matches: {ids}")
     raise VoiceMemosError(f"no recording with id {wanted!r}")
 
