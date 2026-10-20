@@ -1923,6 +1923,37 @@ class TestIdsThatPrintTheSame:
         assert "a\\u200bb" in out
         assert ascii("a​b") not in out
 
+    @pytest.mark.parametrize(
+        ("plain", "other"),
+        [
+            ("memo", "memo "),
+            ("memo", "memo\u00a0"),
+            ("memo", "memo\u3000"),
+            ("my memo", "my\u00a0memo"),
+            ("my memo", "my\u2007memo"),
+        ],
+    )
+    def test_ids_that_differ_by_a_space_separator_are_told_apart(
+        self, plain: str, other: str, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / f"{plain}.m4a")
+        make_m4a(library / f"{other}.m4a")
+        _, out, _ = run(capsys, "list", "--library", str(library))
+        assert ascii(plain) in out
+        assert ascii(other) in out
+
+    def test_space_look_alikes_are_grouped_by_a_key_that_ignores_trailing_space(self) -> None:
+        ids = ["memo", "memo ", "memo\u00a0", "my memo", "my\u2007memo", "memo two", "memo  two"]
+        assert _look_alikes(ids) == {"memo", "memo ", "memo\u00a0", "my memo", "my\u2007memo"}
+
+    def test_ids_that_differ_by_a_visible_space_count_are_left_alone(
+        self, library: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        make_m4a(library / "memo two.m4a")
+        make_m4a(library / "memo  two.m4a")
+        _, out, _ = run(capsys, "list", "--library", str(library))
+        assert ascii("memo two") not in out
+
     def test_the_two_forms_are_grouped_together_with_a_normalisation_twin(self) -> None:
         first, second = (os.fsdecode(raw) for raw in RAW_TWINS)
         ids = [first, second, NFC_ID, NFD_ID, "plain"]

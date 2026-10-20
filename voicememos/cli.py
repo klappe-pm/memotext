@@ -110,19 +110,27 @@ def _warn_skipped(audio: Path, error: OSError) -> None:
     )
 
 
+def _display_key(recording_id: str) -> str:
+    """The form an id prints in, with every kind of space as a plain space and no trailing space."""
+    shown = printable(unicodedata.normalize("NFC", recording_id))
+    return "".join(" " if ch.isspace() else ch for ch in shown).rstrip()
+
+
 def _look_alikes(ids: Iterable[str]) -> set[str]:
     """Return the ids that print the same as another id.
 
     Two ids are grouped when their displayed forms are equal, that is when `printable` gives the
-    same text for both once each is put in Unicode form NFC. That catches a file system that
-    keeps names as written and holds a precomposed and a decomposed spelling of one word side by
-    side, and two names that are not valid UTF-8 and differ only in the bad byte, which both print
-    with a question mark. A table that showed such ids as they print would hide that they differ.
+    same text for both once each is put in Unicode form NFC, every space separator (a no-break
+    space, an ideographic space and the rest) is read as a plain space, and trailing space is
+    dropped. That catches a file system that keeps names as written and holds a precomposed and
+    a decomposed spelling of one word side by side, two names that are not valid UTF-8 and differ
+    only in the bad byte, which both print with a question mark, and two names that differ only
+    in a space that `printable` leaves alone, which a table shows as the same text. A table that
+    showed such ids as they print would hide that they differ.
     """
     groups: dict[str, list[str]] = {}
     for recording_id in ids:
-        shown = printable(unicodedata.normalize("NFC", recording_id))
-        groups.setdefault(shown, []).append(recording_id)
+        groups.setdefault(_display_key(recording_id), []).append(recording_id)
     return {recording_id for group in groups.values() if len(group) > 1 for recording_id in group}
 
 
