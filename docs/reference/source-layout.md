@@ -41,7 +41,7 @@ voicememos/
 | `voicememos/__init__.py` | the names re-exported for users and `__version__` | yes |
 | `voicememos/discovery.py` | `KNOWN_PATHS`, `PathState`, `PathProbe`, `probe_path`, `probe_library`, `find_library`, `spotlight_search`, `is_voicememos_container` | all but `is_voicememos_container` are exported |
 | `voicememos/recording.py` | `Recording`, `Transcript`, `iter_recordings`, `read_transcript`, `content_hash` and the helpers that choose each field | the five names above are exported |
-| `voicememos/errors.py` | `VoiceMemosError`, `LibraryNotFoundError`, `LibraryBlockedError`, `CompositionLimitError`, `UnsafeFileError`, `RecordingSkippedWarning` | the first four are exported; `UnsafeFileError` and `RecordingSkippedWarning` are importable from here and documented in the API reference |
+| `voicememos/errors.py` | `VoiceMemosError`, `LibraryNotFoundError`, `LibraryBlockedError`, `CompositionLimitError`, `UnsafeFileError`, `RecordingSkippedWarning` | all six are exported |
 | `voicememos/safeio.py` | `open_regular`, `open_dir`, `open_child`, `scan_dir`, `close_dir`, `is_real_dir`, `ABSENT_ERRORS` | no |
 | `voicememos/textsafe.py` | `printable` | no |
 | `voicememos/mp4.py` | `read_tsrp_payload`, `read_duration_seconds` and the box walker | no |

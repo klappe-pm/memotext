@@ -18,6 +18,8 @@ from voicememos.errors import (
     CompositionLimitError,
     LibraryBlockedError,
     LibraryNotFoundError,
+    RecordingSkippedWarning,
+    UnsafeFileError,
     VoiceMemosError,
 )
 from voicememos.recording import (
@@ -38,7 +40,9 @@ __all__ = [
     "PathProbe",
     "PathState",
     "Recording",
+    "RecordingSkippedWarning",
     "Transcript",
+    "UnsafeFileError",
     "VoiceMemosError",
     "__version__",
     "content_hash",

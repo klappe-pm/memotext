@@ -11,7 +11,9 @@ from voicememos import (
     PathProbe,
     PathState,
     Recording,
+    RecordingSkippedWarning,
     Transcript,
+    UnsafeFileError,
     VoiceMemosError,
     content_hash,
     find_library,
@@ -128,7 +130,7 @@ Asks Spotlight for candidate folders and returns the parent folder of each hit, 
 | `LibraryBlockedError` | `VoiceMemosError`, `PermissionError` | the recordings folder exists but listing it failed |
 | `UnsafeFileError` | `VoiceMemosError`, `OSError` | `content_hash` was given a recording whose audio file is a symlink or not a regular file; parsers treat such a file as absent instead |
 | `CompositionLimitError` | `VoiceMemosError` | `content_hash` was given a recording whose composition folder is nested more than 64 levels deep or holds more than 100,000 entries |
-| `RecordingSkippedWarning` | `UserWarning` | issued by `iter_recordings` for a recording skipped because an `OSError` stopped it being read; a warning, not an exception |
+| `RecordingSkippedWarning` | `UserWarning` | issued by `iter_recordings` for a recording skipped because any exception other than `MemoryError` stopped it being read, an `OSError` or an error from parsing a hostile file; issued only when no `on_skip` callback is given; a warning, not an exception |
 
 ## Version
 
