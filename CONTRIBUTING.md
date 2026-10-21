@@ -34,7 +34,7 @@ python3 -m pytest --cov=voicememos
 - Everything committed here is public. Never add `models`, `providers` or `session-link` keys to the frontmatter of a Markdown file, never add a session link anywhere, and never credit an agent, model, model provider or agent runtime as author or contributor.
 - Agent instruction files and runtime directories at the repository root are gitignored and never tracked.
 - Do not copy anything from a private repository: no client names, personal paths, notes, plans or prompts. Examples and fixtures are synthetic.
-- Keep any list of private terms to check for (client names, project names) in a file outside the repository, and point `VOICEMEMOS_FORBIDDEN_TERMS_FILE` at it when you run the tests. Never write such terms in the repository.
+- Keep any list of private terms to check for (client names, project names, private tool names) in a file outside the repository, and point `VOICEMEMOS_FORBIDDEN_TERMS_FILE` at it when you run the tests. Never write such terms in the repository.
 - Never commit a secret, credential, private key, `.env` file or `settings.local.json`. `.env.example` with placeholder values is allowed.
 - Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
 

@@ -1,7 +1,8 @@
-"""The published tree names no private tool, personal path or work item code.
+"""The published tree names no owner detail, personal path or work item code.
 
-The patterns are built from fragments so this file does not match itself. A private list of extra
-terms can be kept outside the repository and named by VOICEMEMOS_FORBIDDEN_TERMS_FILE.
+The patterns are built from fragments so this file does not match itself. Private tool names and
+any other private terms are kept outside the repository, in a file named by
+VOICEMEMOS_FORBIDDEN_TERMS_FILE, so the published source never records them.
 """
 
 from __future__ import annotations
