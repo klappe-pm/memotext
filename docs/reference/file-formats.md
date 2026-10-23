@@ -1,6 +1,6 @@
 # File Formats
 
-This page describes the files voicememos reads, as far as the code understands them: the MP4 box structure of an `.m4a` recording, the `tsrp` atom that carries the iOS transcript, the movie header that carries the duration, the `manifest.plist` in a `.composition` folder, and the file naming. It also states how each field of a `Recording` is chosen. Each statement is marked. No real Voice Memos file was available while this package was written, so the tests use synthetic files built to match these descriptions.
+This page describes the files memotext reads, as far as the code understands them: the MP4 box structure of an `.m4a` recording, the `tsrp` atom that carries the iOS transcript, the movie header that carries the duration, the `manifest.plist` in a `.composition` folder, and the file naming. It also states how each field of a `Recording` is chosen. Each statement is marked. No real Voice Memos file was available while this package was written, so the tests use synthetic files built to match these descriptions.
 
 ## How to Read the Status Column
 

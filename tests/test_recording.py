@@ -12,16 +12,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.synthetic import make_m4a, write_manifest
-from voicememos import recording as recording_module
-from voicememos.errors import LibraryBlockedError, LibraryNotFoundError, VoiceMemosError
-from voicememos.recording import (
+from memotext import recording as recording_module
+from memotext.errors import LibraryBlockedError, LibraryNotFoundError, MemotextError
+from memotext.recording import (
     Recording,
     Transcript,
     content_hash,
     iter_recordings,
     read_transcript,
 )
+from tests.synthetic import make_m4a, write_manifest
 
 STEM = "20250115 143022-ABCD1234"
 
@@ -297,7 +297,7 @@ class TestIterRecordings:
         with pytest.raises(LibraryNotFoundError, match="not found") as info:
             iter_recordings(tmp_path / "missing")
         assert isinstance(info.value, FileNotFoundError)
-        assert isinstance(info.value, VoiceMemosError)
+        assert isinstance(info.value, MemotextError)
 
     def test_library_that_is_a_file(self, tmp_path: Path) -> None:
         target = tmp_path / "file"
@@ -315,7 +315,7 @@ class TestIterRecordings:
         with pytest.raises(LibraryBlockedError, match="cannot be listed") as info:
             iter_recordings(library)
         assert isinstance(info.value, PermissionError)
-        assert isinstance(info.value, VoiceMemosError)
+        assert isinstance(info.value, MemotextError)
 
     def test_blocked_library_with_an_error_that_has_no_text(
         self, library: Path, monkeypatch: pytest.MonkeyPatch

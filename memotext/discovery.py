@@ -180,7 +180,7 @@ def _under_container(path: Path, library: Path) -> bool:
     )
 
 
-def is_voicememos_container(path: PathLike) -> bool:
+def is_voice_memos_container(path: PathLike) -> bool:
     """True if `path` is, or lies inside, a known Voice Memos container under `~/Library`.
 
     The known containers are `Group Containers/group.com.apple.VoiceMemos.shared`,
@@ -207,7 +207,7 @@ def find_library(
     call `probe_library` to see why nothing was found. If no listed path is readable and
     `spotlight` is true, the folders from `spotlight_search` are probed and the readable one
     with the most recordings wins. The Spotlight pass never runs unless asked for. Only a
-    candidate that `is_voicememos_container` accepts is considered, so a folder elsewhere that
+    candidate that `is_voice_memos_container` accepts is considered, so a folder elsewhere that
     Spotlight indexed, and whose path happens to contain "VoiceMemos", is never adopted.
     """
     probes = probe_library(paths)
@@ -219,7 +219,7 @@ def find_library(
         extra = [
             probe_path(c)
             for c in spotlight_search()
-            if c not in seen and is_voicememos_container(c)
+            if c not in seen and is_voice_memos_container(c)
         ]
         readable = [p for p in extra if p.state is PathState.READABLE]
         if readable:

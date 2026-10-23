@@ -1,7 +1,7 @@
 """Open files from a library without following symlinks or blocking on special files.
 
 A Voice Memos folder is written by other programs, so a name in it may be a symlink that points
-outside the folder, or a FIFO that blocks any reader forever. Every file voicememos reads is
+outside the folder, or a FIFO that blocks any reader forever. Every file memotext reads is
 opened here: with `O_NOFOLLOW` so a symlink is refused, with `O_NONBLOCK` so a FIFO cannot hang
 the open, and then checked with `fstat` to be a regular file.
 
@@ -20,7 +20,7 @@ import stat
 from pathlib import Path
 from typing import BinaryIO
 
-from voicememos.errors import UnsafeFileError
+from memotext.errors import UnsafeFileError
 
 _OPEN_FLAGS = (
     os.O_RDONLY

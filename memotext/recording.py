@@ -13,15 +13,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, BinaryIO
 
-from voicememos.discovery import AUDIO_SUFFIX, PathLike
-from voicememos.errors import (
+from memotext.discovery import AUDIO_SUFFIX, PathLike
+from memotext.errors import (
     CompositionLimitError,
     LibraryBlockedError,
     LibraryNotFoundError,
     RecordingSkippedWarning,
 )
-from voicememos.mp4 import read_duration_seconds, read_tsrp_payload
-from voicememos.safeio import (
+from memotext.mp4 import read_duration_seconds, read_tsrp_payload
+from memotext.safeio import (
     ABSENT_ERRORS,
     DirRef,
     close_dir,
@@ -31,8 +31,8 @@ from voicememos.safeio import (
     open_regular,
     scan_dir,
 )
-from voicememos.textsafe import printable
-from voicememos.transcripts import (
+from memotext.textsafe import printable
+from memotext.transcripts import (
     SOURCE_PLIST,
     SOURCE_TSRP,
     read_manifest,

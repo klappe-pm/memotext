@@ -1,1 +1,1 @@
-"""Tests for voicememos."""
+"""Tests for memotext."""

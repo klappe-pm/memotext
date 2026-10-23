@@ -12,7 +12,7 @@ from tests.conftest import ROOT
 
 pytestmark = pytest.mark.repo_only
 
-PACKAGE = "voicememos"
+PACKAGE = "memotext"
 DOCS = ROOT / "docs"
 QUADRANTS = ("tutorials", "how-to-guides", "reference", "explanation")
 COMMUNITY_FILES = (

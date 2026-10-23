@@ -1,13 +1,13 @@
 # Read Transcripts from Python
 
-This guide shows how to use voicememos from a script: find the library, read every recording, pick out the ones with transcripts, handle a blocked or missing folder, and tell which recordings changed since the last run. It assumes the package is installed and you know basic Python. The full signatures are in the [Python API reference](../reference/python-api.md).
+This guide shows how to use memotext from a script: find the library, read every recording, pick out the ones with transcripts, handle a blocked or missing folder, and tell which recordings changed since the last run. It assumes the package is installed and you know basic Python. The full signatures are in the [Python API reference](../reference/python-api.md).
 
 ## Find the Library
 
 `find_library` returns the first readable folder, or None. It never returns a folder that exists but cannot be listed.
 
 ```python
-from voicememos import find_library
+from memotext import find_library
 
 library = find_library()
 ```
@@ -15,7 +15,7 @@ library = find_library()
 To see why it returned None, probe the paths:
 
 ```python
-from voicememos import PathState, probe_library
+from memotext import PathState, probe_library
 
 for probe in probe_library():
     print(probe.state.value, probe.path)
@@ -26,7 +26,7 @@ for probe in probe_library():
 To search a different set of folders, pass them in. They are tried in order.
 
 ```python
-from voicememos import find_library
+from memotext import find_library
 
 library = find_library(["~/exports/Recordings", "~/Desktop/Recordings"])
 ```
@@ -34,7 +34,7 @@ library = find_library(["~/exports/Recordings", "~/Desktop/Recordings"])
 ## Read Every Recording
 
 ```python
-from voicememos import iter_recordings
+from memotext import iter_recordings
 
 for recording in iter_recordings(library):
     print(recording.id, recording.recorded_at.isoformat(), recording.duration_seconds)
@@ -45,7 +45,7 @@ for recording in iter_recordings(library):
 ## Handle Errors
 
 ```python
-from voicememos import LibraryBlockedError, LibraryNotFoundError, iter_recordings
+from memotext import LibraryBlockedError, LibraryNotFoundError, iter_recordings
 
 try:
     recordings = list(iter_recordings(library))
@@ -57,7 +57,7 @@ except LibraryNotFoundError:
     raise
 ```
 
-Both errors also derive from `VoiceMemosError`; `LibraryBlockedError` is a `PermissionError` and `LibraryNotFoundError` is a `FileNotFoundError`.
+Both errors also derive from `MemotextError`; `LibraryBlockedError` is a `PermissionError` and `LibraryNotFoundError` is a `FileNotFoundError`.
 
 A single recording that cannot be read does not raise. It is skipped, and the loop continues with the others. Pass `on_skip` to see which, or a `RecordingSkippedWarning` is issued:
 
@@ -82,7 +82,7 @@ from_audio = [r for r in with_text if r.transcript_source == "tsrp"]
 `read_transcript` reads the files again, so it reflects what is on disk now.
 
 ```python
-from voicememos import read_transcript
+from memotext import read_transcript
 
 transcript = read_transcript(recordings[0])
 if transcript is not None:
@@ -91,13 +91,13 @@ if transcript is not None:
 
 ## Detect Changed Recordings
 
-`content_hash` returns a SHA 256 digest of the audio file and the composition folder. It ignores modification times, so copying a file does not change it. Keep the digests wherever suits your script; voicememos stores nothing.
+`content_hash` returns a SHA 256 digest of the audio file and the composition folder. It ignores modification times, so copying a file does not change it. Keep the digests wherever suits your script; memotext stores nothing.
 
 ```python
 import json
 from pathlib import Path
 
-from voicememos import content_hash
+from memotext import content_hash
 
 seen_path = Path("seen.json")
 seen = json.loads(seen_path.read_text()) if seen_path.exists() else {}

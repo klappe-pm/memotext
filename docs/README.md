@@ -1,6 +1,6 @@
 # Documentation
 
-Voicememos reads the Apple Voice Memos library: it finds your recordings, lists them and extracts the transcripts iOS already produced. These pages cover installing and using it, looking things up, and changing the code. They follow the four [Diátaxis](https://diataxis.fr/) quadrants, so the folder a page sits in tells you what kind of page it is.
+Memotext reads the Apple Voice Memos library: it finds your recordings, lists them and extracts the transcripts iOS already produced. These pages cover installing and using it, looking things up, and changing the code. They follow the four [Diátaxis](https://diataxis.fr/) quadrants, so the folder a page sits in tells you what kind of page it is.
 
 ## Tutorials
 

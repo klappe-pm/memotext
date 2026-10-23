@@ -101,9 +101,9 @@ def test_the_test_job_tests_the_wheel_the_build_job_made() -> None:
     assert "actions/download-artifact" in test
     assert "pip install --no-deps dist/*.whl" in test
     assert "pip install --require-hashes -r requirements/ci.txt" in test
-    assert "rm -r voicememos" in test
+    assert "rm -r memotext" in test
     assert "site-packages" in test
-    assert test.index("rm -r voicememos") < test.index("python -m pytest")
+    assert test.index("rm -r memotext") < test.index("python -m pytest")
 
 
 def test_the_build_checks_the_tag_against_the_version_and_against_main() -> None:

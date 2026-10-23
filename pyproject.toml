@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27,<2"]
 build-backend = "hatchling.build"
 
 [project]
-name = "voicememos"
+name = "memotext"
 dynamic = ["version"]
 description = "Read the Apple Voice Memos library: find recordings, list them and extract the transcripts iOS already made."
 readme = "README.md"
@@ -33,24 +33,24 @@ test = ["pytest>=9.0.3", "pytest-cov>=7"]
 lint = ["ruff", "mypy"]
 
 [project.scripts]
-voicememos = "voicememos.cli:main"
+memotext = "memotext.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/klappe-pm/voicememos"
-Repository = "https://github.com/klappe-pm/voicememos"
-Documentation = "https://github.com/klappe-pm/voicememos/blob/main/docs/README.md"
-Changelog = "https://github.com/klappe-pm/voicememos/blob/main/CHANGELOG.md"
-Issues = "https://github.com/klappe-pm/voicememos/issues"
+Homepage = "https://github.com/klappe-pm/memotext"
+Repository = "https://github.com/klappe-pm/memotext"
+Documentation = "https://github.com/klappe-pm/memotext/blob/main/docs/README.md"
+Changelog = "https://github.com/klappe-pm/memotext/blob/main/CHANGELOG.md"
+Issues = "https://github.com/klappe-pm/memotext/issues"
 
 [tool.hatch.version]
-path = "voicememos/__init__.py"
+path = "memotext/__init__.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["voicememos"]
+packages = ["memotext"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/voicememos",
+    "/memotext",
     "/tests",
     "/README.md",
     "/LICENSE",
@@ -64,7 +64,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["voicememos"]
+source = ["memotext"]
 
 [tool.coverage.report]
 show_missing = true
@@ -82,4 +82,4 @@ select = ["E", "F", "I", "UP", "B", "SIM", "W", "S", "RUF"]
 [tool.mypy]
 strict = true
 python_version = "3.11"
-files = ["voicememos"]
+files = ["memotext"]

@@ -1,6 +1,6 @@
 # Library States
 
-This page describes how voicememos decides whether a Voice Memos folder is usable: the known folder paths, the four states a path can be in, how a path is probed, and the optional Spotlight search. It is the reference for layer 1 (the known paths) and layer 2 (Spotlight) of folder discovery. There are no interactive layers: nothing here prompts, opens System Settings or changes a permission. The reasoning is in [where macOS keeps Voice Memos](../explanation/where-macos-keeps-voice-memos.md).
+This page describes how memotext decides whether a Voice Memos folder is usable: the known folder paths, the four states a path can be in, how a path is probed, and the optional Spotlight search. It is the reference for layer 1 (the known paths) and layer 2 (Spotlight) of folder discovery. There are no interactive layers: nothing here prompts, opens System Settings or changes a permission. The reasoning is in [where macOS keeps Voice Memos](../explanation/where-macos-keeps-voice-memos.md).
 
 ## Known Paths
 
@@ -59,4 +59,4 @@ Neither query has been run against a real Spotlight index while writing this pac
 - `Containers/com.apple.VoiceMemos`
 - `Application Support/com.apple.voicememos`
 
-The path as Spotlight reported it and the same path with symlinks resolved must both lie inside one of them, and the path may not contain `..`. A folder that Spotlight indexed elsewhere whose path merely contains "VoiceMemos", such as `~/Downloads/VoiceMemos-shared`, is never adopted, because the first folder with recordings in it would otherwise become the one `list` and `show` read. `spotlight_search` itself still returns every hit; the filter is `voicememos.discovery.is_voicememos_container`, applied by `find_library`.
+The path as Spotlight reported it and the same path with symlinks resolved must both lie inside one of them, and the path may not contain `..`. A folder that Spotlight indexed elsewhere whose path merely contains "VoiceMemos", such as `~/Downloads/VoiceMemos-shared`, is never adopted, because the first folder with recordings in it would otherwise become the one `list` and `show` read. `spotlight_search` itself still returns every hit; the filter is `memotext.discovery.is_voice_memos_container`, applied by `find_library`.

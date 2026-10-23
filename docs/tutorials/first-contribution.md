@@ -8,27 +8,27 @@ This tutorial takes you from a fresh clone to a change that is ready for review.
 - `git`, and a GitHub account if you intend to open a pull request.
 - No Mac. The default suite runs on Linux and uses only synthetic files.
 
-The commands use `/path/to/voicememos` for your clone. Replace it with the real location.
+The commands use `/path/to/memotext` for your clone. Replace it with the real location.
 
 ## Clone and Install
 
 ```bash
-git clone https://github.com/klappe-pm/voicememos /path/to/voicememos && python3 -m venv /path/to/voicememos/.venv && /path/to/voicememos/.venv/bin/pip install -e '/path/to/voicememos[test,lint]'
+git clone https://github.com/klappe-pm/memotext /path/to/memotext && python3 -m venv /path/to/memotext/.venv && /path/to/memotext/.venv/bin/pip install -e '/path/to/memotext[test,lint]'
 ```
 
-This installs Voicememos as an editable package with the `test` extra (`pytest` and `pytest-cov`) and the `lint` extra (`ruff` and `mypy`). The package itself has no runtime dependencies.
+This installs Memotext as an editable package with the `test` extra (`pytest` and `pytest-cov`) and the `lint` extra (`ruff` and `mypy`). The package itself has no runtime dependencies.
 
 ## Run the Tests
 
 ```bash
-/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests
+/path/to/memotext/.venv/bin/python -P -m pytest /path/to/memotext/tests
 ```
 
 The suite finishes in a couple of seconds. Skips are normal: tests that need a non-root user to make a directory unreadable skip when you run as root, and each says why. See [Run the Tests](../how-to-guides/run-the-tests.md) for the other checks.
 
 ## Make a Change
 
-Pick something small. This example makes the table in `voicememos list` show a different title length. The limit is the number passed to `_shorten` in `voicememos/cli.py`, in the `_cmd_list` function:
+Pick something small. This example makes the table in `memotext list` show a different title length. The limit is the number passed to `_shorten` in `memotext/cli.py`, in the `_cmd_list` function:
 
 ```text
 _shorten(r.title, 40),
@@ -41,11 +41,11 @@ Update the page in `docs/` that describes the behaviour. A page goes in the fold
 ## Check It
 
 ```bash
-/path/to/voicememos/.venv/bin/python -P -m pytest /path/to/voicememos/tests --cov=voicememos --cov-report=term-missing
+/path/to/memotext/.venv/bin/python -P -m pytest /path/to/memotext/tests --cov=memotext --cov-report=term-missing
 ```
 
 ```bash
-/path/to/voicememos/.venv/bin/ruff check /path/to/voicememos && /path/to/voicememos/.venv/bin/ruff format --check /path/to/voicememos && /path/to/voicememos/.venv/bin/mypy --config-file /path/to/voicememos/pyproject.toml /path/to/voicememos/voicememos
+/path/to/memotext/.venv/bin/ruff check /path/to/memotext && /path/to/memotext/.venv/bin/ruff format --check /path/to/memotext && /path/to/memotext/.venv/bin/mypy --config-file /path/to/memotext/pyproject.toml /path/to/memotext/memotext
 ```
 
 Coverage should stay at 90 percent or higher and every check should pass.

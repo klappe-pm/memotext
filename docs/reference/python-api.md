@@ -1,9 +1,9 @@
 # Python API
 
-This page is the reference for the public Python API of the `voicememos` package: everything importable from the top level `voicememos` module. It lists each name with its signature, what it returns and what it raises. Anything not listed here, including the submodules `mp4` and `transcripts`, is internal and may change. The package has no configuration keys and reads no environment variable of its own; see [cli](cli.md) for the note on environment.
+This page is the reference for the public Python API of the `memotext` package: everything importable from the top level `memotext` module. It lists each name with its signature, what it returns and what it raises. Anything not listed here, including the submodules `mp4` and `transcripts`, is internal and may change. The package has no configuration keys and reads no environment variable of its own; see [cli](cli.md) for the note on environment.
 
 ```python
-from voicememos import (
+from memotext import (
     KNOWN_PATHS,
     CompositionLimitError,
     LibraryBlockedError,
@@ -14,7 +14,7 @@ from voicememos import (
     RecordingSkippedWarning,
     Transcript,
     UnsafeFileError,
-    VoiceMemosError,
+    MemotextError,
     content_hash,
     find_library,
     iter_recordings,
@@ -125,13 +125,13 @@ Asks Spotlight for candidate folders and returns the parent folder of each hit, 
 
 | class | bases | raised when |
 | --- | --- | --- |
-| `VoiceMemosError` | `Exception` | base class of the errors below |
-| `LibraryNotFoundError` | `VoiceMemosError`, `FileNotFoundError` | the recordings folder does not exist or is not a directory |
-| `LibraryBlockedError` | `VoiceMemosError`, `PermissionError` | the recordings folder exists but listing it failed |
-| `UnsafeFileError` | `VoiceMemosError`, `OSError` | `content_hash` was given a recording whose audio file is a symlink or not a regular file; parsers treat such a file as absent instead |
-| `CompositionLimitError` | `VoiceMemosError` | `content_hash` was given a recording whose composition folder is nested more than 64 levels deep or holds more than 100,000 entries |
+| `MemotextError` | `Exception` | base class of the errors below |
+| `LibraryNotFoundError` | `MemotextError`, `FileNotFoundError` | the recordings folder does not exist or is not a directory |
+| `LibraryBlockedError` | `MemotextError`, `PermissionError` | the recordings folder exists but listing it failed |
+| `UnsafeFileError` | `MemotextError`, `OSError` | `content_hash` was given a recording whose audio file is a symlink or not a regular file; parsers treat such a file as absent instead |
+| `CompositionLimitError` | `MemotextError` | `content_hash` was given a recording whose composition folder is nested more than 64 levels deep or holds more than 100,000 entries |
 | `RecordingSkippedWarning` | `UserWarning` | issued by `iter_recordings` for a recording skipped because any exception other than `MemoryError` stopped it being read, an `OSError` or an error from parsing a hostile file; issued only when no `on_skip` callback is given; a warning, not an exception |
 
 ## Version
 
-`voicememos.__version__` is the version string, `"0.1.0"`.
+`memotext.__version__` is the version string, `"0.1.0"`.

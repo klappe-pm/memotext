@@ -1,9 +1,9 @@
-"""Generate the Voicememos banner: a terminal window with text as outlines and a timed animation.
+"""Generate the Memotext banner: a terminal window with text as outlines and a timed animation.
 
 Usage: python3 scripts/make-banner.py [--accent HEX] [--regular FONT.ttf] [--bold FONT.ttf]
        [--out PATH]
 
-The output defaults to .github/voicememos-banner.svg and the wordmark colour to #ff6b6b.
+The output defaults to .github/memotext-banner.svg and the wordmark colour to #ff6b6b.
 
 Follows the Stratarc banner (window chrome, palette, timing, outlined DejaVu Sans Mono) and
 changes only the command, the wordmark, the tagline and the result rows. Text is converted to
@@ -22,12 +22,12 @@ from fontTools.pens.transformPen import TransformPen
 from fontTools.ttLib import TTFont
 
 PACKAGES = {
-    "voicememos": {
+    "memotext": {
         "folder": "~",
-        "command": "voicememos list",
+        "command": "memotext list",
         "tagline": "read the Voice Memos library and the transcripts iOS made",
         "label": (
-            "A terminal window: voicememos list is typed, the voicememos wordmark appears, "
+            "A terminal window: memotext list is typed, the memotext wordmark appears, "
             "and recordings are listed with their transcripts"
         ),
         "status_column": False,
@@ -44,9 +44,9 @@ ap = argparse.ArgumentParser()
 ap.add_argument("--accent", default="#ff6b6b", help="wordmark colour")
 ap.add_argument("--regular", default="/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf")
 ap.add_argument("--bold", default="/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf")
-ap.add_argument("--out", default=".github/voicememos-banner.svg")
+ap.add_argument("--out", default=".github/memotext-banner.svg")
 args = ap.parse_args()
-name = "voicememos"
+name = "memotext"
 spec = PACKAGES[name]
 out = Path(args.out)
 

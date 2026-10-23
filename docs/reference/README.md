@@ -4,8 +4,8 @@ Reference pages describe the machinery: the functions, the commands, the states,
 
 ## Pages
 
-- [CLI](cli.md): every command of `voicememos` with its options, output shapes, exit statuses, and a note on configuration.
-- [Python API](python-api.md): every public function, class, constant and exception in the `voicememos` package, with signatures, return values and errors.
+- [CLI](cli.md): every command of `memotext` with its options, output shapes, exit statuses, and a note on configuration.
+- [Python API](python-api.md): every public function, class, constant and exception in the `memotext` package, with signatures, return values and errors.
 - [Library States](library-states.md): the known folder paths, the four states a path can be in, how a path is probed, and the Spotlight search.
 - [File Formats](file-formats.md): the MP4 boxes, the `tsrp` atom and `manifest.plist` as far as the code understands them, with each inferred part marked.
 - [Source Layout](source-layout.md): the repository tree, each module and its responsibility, and which functions are public.

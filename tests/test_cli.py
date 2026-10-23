@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
+from memotext import __version__, cli, discovery
+from memotext.cli import main
 from tests.synthetic import make_m4a, write_manifest
-from voicememos import __version__, cli, discovery
-from voicememos.cli import main
 
 STEM_A = "20250115 143022-ABCD1234"
 STEM_B = "20250116 081500-EF019876"
@@ -190,7 +190,7 @@ class TestList:
         assert code == 1
         assert out == ""
         assert "no readable Voice Memos folder" in err
-        assert "voicememos probe" in err
+        assert "memotext probe" in err
 
     def test_blocked_library_is_reported_not_called_missing(
         self,
@@ -308,7 +308,7 @@ class TestShow:
     def test_no_library(self, capsys: pytest.CaptureFixture[str]) -> None:
         code, _, err = run(capsys, "show", "x")
         assert code == 1
-        assert "voicememos:" in err
+        assert "memotext:" in err
 
 
 class TestEntryPoints:
@@ -316,7 +316,7 @@ class TestEntryPoints:
         with pytest.raises(SystemExit) as info:
             main(["--version"])
         assert info.value.code == 0
-        assert capsys.readouterr().out.strip() == f"voicememos {__version__}"
+        assert capsys.readouterr().out.strip() == f"memotext {__version__}"
 
     def test_a_command_is_required(self, capsys: pytest.CaptureFixture[str]) -> None:
         with pytest.raises(SystemExit) as info:
@@ -331,16 +331,16 @@ class TestEntryPoints:
     def test_main_reads_sys_argv_by_default(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["voicememos", "probe", "--json"])
+        monkeypatch.setattr(sys, "argv", ["memotext", "probe", "--json"])
         assert main() == 1
         assert json.loads(capsys.readouterr().out)["library"] is None
 
     def test_python_dash_m_entry_point(
         self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        monkeypatch.setattr(sys, "argv", ["voicememos", "probe", "--json"])
+        monkeypatch.setattr(sys, "argv", ["memotext", "probe", "--json"])
         with pytest.raises(SystemExit) as info:
-            runpy.run_module("voicememos", run_name="__main__")
+            runpy.run_module("memotext", run_name="__main__")
         assert info.value.code == 1
         assert json.loads(capsys.readouterr().out)["library"] is None
 
@@ -372,7 +372,7 @@ class TestClosedPipe:
             pytest.skip("needs the head program")
         self.big_library(library)
         lister = subprocess.Popen(  # noqa: S603
-            [sys.executable, "-m", "voicememos", "list", "--library", str(library)],
+            [sys.executable, "-m", "memotext", "list", "--library", str(library)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
@@ -390,7 +390,7 @@ class TestClosedPipe:
     def test_a_pipe_closed_before_the_first_read_is_quiet_too(self, library: Path) -> None:
         self.big_library(library)
         lister = subprocess.Popen(  # noqa: S603
-            [sys.executable, "-m", "voicememos", "list", "--library", str(library)],
+            [sys.executable, "-m", "memotext", "list", "--library", str(library)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )

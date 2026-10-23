@@ -20,8 +20,8 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from voicememos.mp4 import read_tsrp_payload
-from voicememos.safeio import (
+from memotext.mp4 import read_tsrp_payload
+from memotext.safeio import (
     ABSENT_ERRORS,
     DirRef,
     close_dir,

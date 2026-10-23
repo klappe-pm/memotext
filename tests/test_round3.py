@@ -1,4 +1,4 @@
-"""Regression tests for the third verification round (voicememos only)."""
+"""Regression tests for the third verification round (memotext only)."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ from pathlib import Path
 
 import pytest
 
+from memotext.cli import main
+from memotext.textsafe import printable
 from tests.synthetic import make_m4a
-from voicememos.cli import main
-from voicememos.textsafe import printable
 
 # --- vm3-01: characters that draw as blank without being Default_Ignorable -------------------
 

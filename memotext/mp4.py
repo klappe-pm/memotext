@@ -1,4 +1,4 @@
-"""A minimal reader for the MP4 boxes (atoms) that voicememos needs.
+"""A minimal reader for the MP4 boxes (atoms) that memotext needs.
 
 An MP4 or M4A file is a sequence of boxes. Each box starts with a four byte big endian size and a
 four character type, followed by a payload. A size of 1 means a 64 bit size follows the type, and
@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import BinaryIO
 
-from voicememos.safeio import ABSENT_ERRORS, open_regular
+from memotext.safeio import ABSENT_ERRORS, open_regular
 
 TSRP = b"tsrp"
 MVHD = b"mvhd"

@@ -1,4 +1,4 @@
-"""The `voicememos` command line interface."""
+"""The `memotext` command line interface."""
 
 from __future__ import annotations
 
@@ -11,11 +11,11 @@ from collections.abc import Iterable, Sequence
 from dataclasses import replace
 from pathlib import Path
 
-from voicememos import __version__
-from voicememos.discovery import PathState, find_library, probe_library
-from voicememos.errors import LibraryBlockedError, LibraryNotFoundError, VoiceMemosError
-from voicememos.recording import Recording, iter_recordings, local_time, read_transcript
-from voicememos.textsafe import printable
+from memotext import __version__
+from memotext.discovery import PathState, find_library, probe_library
+from memotext.errors import LibraryBlockedError, LibraryNotFoundError, MemotextError
+from memotext.recording import Recording, iter_recordings, local_time, read_transcript
+from memotext.textsafe import printable
 
 EXIT_OK = 0
 EXIT_ERROR = 1
@@ -37,10 +37,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     parser = argparse.ArgumentParser(
-        prog="voicememos",
+        prog="memotext",
         description="Read the Apple Voice Memos library: list recordings and show transcripts.",
     )
-    parser.add_argument("--version", action="version", version=f"voicememos {__version__}")
+    parser.add_argument("--version", action="version", version=f"memotext {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 
     probe = sub.add_parser(
@@ -105,7 +105,7 @@ def _dump(data: object) -> str:
 def _warn_skipped(audio: Path, error: OSError) -> None:
     reason = error.strerror or type(error).__name__
     print(
-        f"voicememos: warning: skipped {printable(str(audio))}: {printable(reason)}",
+        f"memotext: warning: skipped {printable(str(audio))}: {printable(reason)}",
         file=sys.stderr,
     )
 
@@ -165,7 +165,7 @@ def _library_for(explicit: str | None, spotlight: bool) -> Path:
     if found is not None:
         if spotlight and _chosen_by_spotlight(found):
             print(
-                f"voicememos: using {printable(str(found))} (found by Spotlight)",
+                f"memotext: using {printable(str(found))} (found by Spotlight)",
                 file=sys.stderr,
             )
         return found
@@ -176,7 +176,7 @@ def _library_for(explicit: str | None, spotlight: bool) -> Path:
             f"found a recordings folder that cannot be listed: {names}. {FULL_DISK_ACCESS_HINT}"
         )
     raise LibraryNotFoundError(
-        "no readable Voice Memos folder found. Run `voicememos probe` to see each path checked, "
+        "no readable Voice Memos folder found. Run `memotext probe` to see each path checked, "
         "or pass --library PATH."
     )
 
@@ -251,8 +251,8 @@ def _match(recordings: list[Recording], wanted: str) -> Recording:
     if prefixed:
         look_alikes = _look_alikes(r.id for r in recordings)
         ids = ", ".join(_label(r.id, look_alikes) for r in prefixed)
-        raise VoiceMemosError(f"id {wanted!r} is ambiguous, it matches: {ids}")
-    raise VoiceMemosError(f"no recording with id {wanted!r}")
+        raise MemotextError(f"id {wanted!r} is ambiguous, it matches: {ids}")
+    raise MemotextError(f"no recording with id {wanted!r}")
 
 
 def _cmd_show(args: argparse.Namespace) -> int:
@@ -325,7 +325,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     Exit statuses: 0 on success, 1 when no readable library is found, a library cannot be
     listed, or a recording id does not match, 2 for a usage error, and 141 when the reader of
-    standard output closed the pipe early (`voicememos list | head -1`), which ends the command
+    standard output closed the pipe early (`memotext list | head -1`), which ends the command
     without a message.
     """
     _make_streams_lossless()
@@ -341,8 +341,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except BrokenPipeError:
         _silence_stdout()
         return EXIT_BROKEN_PIPE
-    except (VoiceMemosError, OSError) as exc:
-        print(f"voicememos: {printable(str(exc))}", file=sys.stderr)
+    except (MemotextError, OSError) as exc:
+        print(f"memotext: {printable(str(exc))}", file=sys.stderr)
         return EXIT_ERROR
 
 

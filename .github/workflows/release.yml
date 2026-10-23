@@ -38,7 +38,7 @@ jobs:
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' voicememos/__init__.py)"
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' memotext/__init__.py)"
           test "v${version}" = "${TAG}" || { echo "tag ${TAG} does not match version ${version}"; exit 1; }
       - name: build
         run: python -m build --no-isolation
@@ -77,9 +77,9 @@ jobs:
         run: python -m pip install --no-deps dist/*.whl
       - name: put the checkout's package out of the way
         # The tests must import the wheel that will ship, not the source tree beside them.
-        run: rm -r voicememos
+        run: rm -r memotext
       - name: the wheel is what the tests import
-        run: python -c "import pathlib, voicememos; assert 'site-packages' in pathlib.Path(voicememos.__file__).parts, voicememos.__file__"
+        run: python -c "import pathlib, memotext; assert 'site-packages' in pathlib.Path(memotext.__file__).parts, memotext.__file__"
       - name: test
         run: python -m pytest -q
 

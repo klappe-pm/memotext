@@ -13,13 +13,13 @@ This tutorial takes you from an install to reading a transcript from your own Vo
 Until there is a release, install from the repository.
 
 ```bash
-pipx install git+https://github.com/klappe-pm/voicememos
+pipx install git+https://github.com/klappe-pm/memotext
 ```
 
 Check the command runs:
 
 ```bash
-voicememos --version
+memotext --version
 ```
 
 ## Probe the Library
@@ -27,7 +27,7 @@ voicememos --version
 `probe` tests each place Voice Memos has been known to keep recordings and says what it found.
 
 ```bash
-voicememos probe
+memotext probe
 ```
 
 Each line shows a state, a count and a path. A folder you can use is `readable`. If you see `blocked` next to a path, the folder exists but macOS will not let this terminal list it. Open System Settings, go to Privacy and Security, then Full Disk Access, add your terminal app, quit the terminal completely and open it again. Then run `probe` again. [where macOS keeps Voice Memos](../explanation/where-macos-keeps-voice-memos.md) explains why.
@@ -37,7 +37,7 @@ The last line names the folder the other commands will read, for example `librar
 ## List Recordings
 
 ```bash
-voicememos list
+memotext list
 ```
 
 You get one row per recording, newest first, with its id, when it was recorded, its duration, where its transcript came from (`tsrp`, `plist` or `none`) and its title. The id is the file name without `.m4a`.
@@ -47,7 +47,7 @@ You get one row per recording, newest first, with its id, when it was recorded, 
 Copy an id from the list. Ids contain a space, so quote them. A start of the id is enough if it matches only one recording.
 
 ```bash
-voicememos show "20250115 143022-ABCD1234"
+memotext show "20250115 143022-ABCD1234"
 ```
 
 The command prints the title, the dates and paths, and then the transcript text.
@@ -57,7 +57,7 @@ The command prints the title, the dates and paths, and then the transcript text.
 Add `--json` to `list` or `show` to get output a script can read.
 
 ```bash
-voicememos list --json
+memotext list --json
 ```
 
 ## Use It from Python
@@ -65,11 +65,11 @@ voicememos list --json
 The same steps in Python:
 
 ```python
-from voicememos import find_library, iter_recordings
+from memotext import find_library, iter_recordings
 
 library = find_library()
 if library is None:
-    raise SystemExit("no readable Voice Memos folder; run `voicememos probe`")
+    raise SystemExit("no readable Voice Memos folder; run `memotext probe`")
 
 for recording in iter_recordings(library):
     print(recording.recorded_at.isoformat(), recording.title)

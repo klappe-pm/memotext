@@ -1,10 +1,10 @@
 # Design
 
-This page explains why voicememos is built the way it is, for a reader deciding whether it fits their use or wondering why a behaviour is what it is. It covers the scope, the choice to have no dependencies, the four state probe, the timezone aware dates, the order in which transcripts are tried, and what is left out on purpose. It takes positions and names the alternatives. How the code is laid out is in the developer [architecture](architecture.md) page.
+This page explains why memotext is built the way it is, for a reader deciding whether it fits their use or wondering why a behaviour is what it is. It covers the scope, the choice to have no dependencies, the four state probe, the timezone aware dates, the order in which transcripts are tried, and what is left out on purpose. It takes positions and names the alternatives. How the code is laid out is in the developer [architecture](architecture.md) page.
 
 ## Scope
 
-voicememos reads. It finds the recordings folder, lists recordings with their date, duration and title, and extracts the transcript iOS already produced. It does not transcribe audio, call a language model, write notes or touch the network. Each of those is a larger decision with its own dependencies and failure modes, and each belongs in the program that uses the library. Keeping the package to reading means it can be installed anywhere, tested on Linux and trusted with a library full of personal audio.
+memotext reads. It finds the recordings folder, lists recordings with their date, duration and title, and extracts the transcript iOS already produced. It does not transcribe audio, call a language model, write notes or touch the network. Each of those is a larger decision with its own dependencies and failure modes, and each belongs in the program that uses the library. Keeping the package to reading means it can be installed anywhere, tested on Linux and trusted with a library full of personal audio.
 
 ## No Runtime Dependencies
 

@@ -5,7 +5,7 @@ title, and extracts the transcript that iOS already produced. It does not transc
 language model, write notes or use the network.
 """
 
-from voicememos.discovery import (
+from memotext.discovery import (
     KNOWN_PATHS,
     PathProbe,
     PathState,
@@ -14,15 +14,15 @@ from voicememos.discovery import (
     probe_path,
     spotlight_search,
 )
-from voicememos.errors import (
+from memotext.errors import (
     CompositionLimitError,
     LibraryBlockedError,
     LibraryNotFoundError,
+    MemotextError,
     RecordingSkippedWarning,
     UnsafeFileError,
-    VoiceMemosError,
 )
-from voicememos.recording import (
+from memotext.recording import (
     Recording,
     Transcript,
     content_hash,
@@ -37,13 +37,13 @@ __all__ = [
     "CompositionLimitError",
     "LibraryBlockedError",
     "LibraryNotFoundError",
+    "MemotextError",
     "PathProbe",
     "PathState",
     "Recording",
     "RecordingSkippedWarning",
     "Transcript",
     "UnsafeFileError",
-    "VoiceMemosError",
     "__version__",
     "content_hash",
     "find_library",

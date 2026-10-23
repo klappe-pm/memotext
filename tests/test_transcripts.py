@@ -8,14 +8,14 @@ from pathlib import Path
 
 import pytest
 
-from tests.synthetic import make_m4a, tsrp_payload, write_manifest
-from voicememos import transcripts
-from voicememos.transcripts import (
+from memotext import transcripts
+from memotext.transcripts import (
     read_manifest,
     read_tsrp_transcript,
     transcript_from_manifest,
     transcript_from_tsrp,
 )
+from tests.synthetic import make_m4a, tsrp_payload, write_manifest
 
 
 class TestTranscriptFromManifest:

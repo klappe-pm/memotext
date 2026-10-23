@@ -1,6 +1,6 @@
 # Explanation
 
-Explanation pages give background. They are for a reader who wants to understand Voicememos rather than operate it: why macOS makes the library hard to read, why the package is shaped the way it is, what it trusts and what tradeoffs it makes. They can be read away from the keyboard, they take a position, and they are the one place in the documentation where discussing alternatives is welcome.
+Explanation pages give background. They are for a reader who wants to understand Memotext rather than operate it: why macOS makes the library hard to read, why the package is shaped the way it is, what it trusts and what tradeoffs it makes. They can be read away from the keyboard, they take a position, and they are the one place in the documentation where discussing alternatives is welcome.
 
 ## Pages
 

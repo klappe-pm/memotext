@@ -12,8 +12,8 @@ from types import TracebackType
 
 import pytest
 
-from voicememos import discovery
-from voicememos.discovery import (
+from memotext import discovery
+from memotext.discovery import (
     KNOWN_PATHS,
     PathState,
     find_library,
@@ -426,7 +426,7 @@ class TestSpotlightCandidatesAreConfined:
         ],
     )
     def test_each_known_container_pattern_is_accepted(self, fake_home: Path, relative: str) -> None:
-        assert discovery.is_voicememos_container(fake_home / relative)
+        assert discovery.is_voice_memos_container(fake_home / relative)
 
     @pytest.mark.parametrize(
         "relative",
@@ -441,11 +441,11 @@ class TestSpotlightCandidatesAreConfined:
         ],
     )
     def test_other_paths_are_refused(self, fake_home: Path, relative: str) -> None:
-        assert not discovery.is_voicememos_container(fake_home / relative)
+        assert not discovery.is_voice_memos_container(fake_home / relative)
 
     def test_a_path_outside_the_home_is_refused(self, tmp_path: Path) -> None:
         elsewhere = tmp_path / "Library/Group Containers/group.com.apple.VoiceMemos.shared/R"
-        assert not discovery.is_voicememos_container(elsewhere)
+        assert not discovery.is_voice_memos_container(elsewhere)
 
     def test_a_symlink_that_leaves_library_is_refused(
         self, fake_home: Path, tmp_path: Path
@@ -456,4 +456,4 @@ class TestSpotlightCandidatesAreConfined:
         link = fake_home / CONTAINER / "link"
         link.parent.mkdir(parents=True)
         link.symlink_to(target)
-        assert not discovery.is_voicememos_container(link)
+        assert not discovery.is_voice_memos_container(link)

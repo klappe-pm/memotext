@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
+from memotext import mp4
+from memotext.mp4 import read_duration_seconds, read_tsrp_payload
 from tests.synthetic import box, large_box, make_m4a, mvhd, tsrp_payload
-from voicememos import mp4
-from voicememos.mp4 import read_duration_seconds, read_tsrp_payload
 
 PAYLOAD = b'{"hello": "world"}'
 

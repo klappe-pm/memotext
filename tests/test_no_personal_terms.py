@@ -2,7 +2,7 @@
 
 The patterns are built from fragments so this file does not match itself. Private tool names and
 any other private terms are kept outside the repository, in a file named by
-VOICEMEMOS_FORBIDDEN_TERMS_FILE, so the published source never records them.
+MEMOTEXT_FORBIDDEN_TERMS_FILE, so the published source never records them.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import pytest
 
 from tests.conftest import ROOT
 
-TERMS_FILE_VARIABLE = "VOICEMEMOS_FORBIDDEN_TERMS_FILE"
+TERMS_FILE_VARIABLE = "MEMOTEXT_FORBIDDEN_TERMS_FILE"
 
 FORBIDDEN = {
     "owner login": "kl" + "appe" + r"(?!-pm\b)",
@@ -121,14 +121,14 @@ def test_the_package_owner_is_allowed_only_where_a_licence_needs_one(tmp_path: P
 
 def test_the_repository_owner_account_is_not_a_hit(tmp_path: Path) -> None:
     path = tmp_path / "a.md"
-    path.write_text("https://github.com/" + "kl" + "appe" + "-pm/voicememos\n", encoding="utf-8")
+    path.write_text("https://github.com/" + "kl" + "appe" + "-pm/memotext\n", encoding="utf-8")
     assert scan([path], tmp_path) == []
 
 
 def test_no_extra_forbidden_terms() -> None:
     """Check a private list of terms kept outside the repository.
 
-    The list is a text file, one term per line, named by VOICEMEMOS_FORBIDDEN_TERMS_FILE. The
+    The list is a text file, one term per line, named by MEMOTEXT_FORBIDDEN_TERMS_FILE. The
     repository itself never records the terms.
     """
     location = os.environ.get(TERMS_FILE_VARIABLE)

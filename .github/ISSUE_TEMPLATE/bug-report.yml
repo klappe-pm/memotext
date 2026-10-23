@@ -1,5 +1,5 @@
 name: Bug report
-description: Voicememos did something other than what the documentation says.
+description: Memotext did something other than what the documentation says.
 labels: ["bug"]
 body:
   - type: textarea
@@ -7,7 +7,7 @@ body:
     attributes:
       label: What happened
       description: What you ran, what you expected and what happened instead.
-      placeholder: "I ran `voicememos list` and expected ..., but ..."
+      placeholder: "I ran `memotext list` and expected ..., but ..."
     validations:
       required: true
   - type: textarea
@@ -19,8 +19,8 @@ body:
   - type: input
     id: version
     attributes:
-      label: Voicememos version
-      description: The output of `voicememos --version`.
+      label: Memotext version
+      description: The output of `memotext --version`.
     validations:
       required: true
   - type: input

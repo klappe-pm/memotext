@@ -26,21 +26,21 @@ from pathlib import Path
 
 import pytest
 
-from tests.synthetic import box, make_m4a, mvhd, write_manifest
-from voicememos import mp4, transcripts
-from voicememos import recording as recording_module
-from voicememos.cli import _dump, _look_alikes, main
-from voicememos.errors import (
+from memotext import mp4, transcripts
+from memotext import recording as recording_module
+from memotext.cli import _dump, _look_alikes, main
+from memotext.errors import (
     CompositionLimitError,
+    MemotextError,
     RecordingSkippedWarning,
     UnsafeFileError,
-    VoiceMemosError,
 )
-from voicememos.mp4 import read_duration_seconds, read_tsrp_payload
-from voicememos.recording import Recording, content_hash, iter_recordings, local_time
-from voicememos.safeio import close_dir, is_real_dir, open_dir, open_regular, scan_dir
-from voicememos.textsafe import printable
-from voicememos.transcripts import read_manifest, transcript_from_manifest
+from memotext.mp4 import read_duration_seconds, read_tsrp_payload
+from memotext.recording import Recording, content_hash, iter_recordings, local_time
+from memotext.safeio import close_dir, is_real_dir, open_dir, open_regular, scan_dir
+from memotext.textsafe import printable
+from memotext.transcripts import read_manifest, transcript_from_manifest
+from tests.synthetic import box, make_m4a, mvhd, write_manifest
 
 STEM = "20240101 120000-ABCD"
 
@@ -512,10 +512,10 @@ class TestPerRecordingErrors:
         def boom(recording: Recording) -> object:
             raise PermissionError(1, "Operation not permitted")
 
-        monkeypatch.setattr("voicememos.cli.read_transcript", boom)
+        monkeypatch.setattr("memotext.cli.read_transcript", boom)
         code, _, err = run(capsys, "show", "a", "--library", str(library))
         assert code == 1
-        assert err.startswith("voicememos:")
+        assert err.startswith("memotext:")
         assert "Traceback" not in err
 
 
@@ -658,7 +658,7 @@ class TestSymlinks:
     def test_a_symlinked_audio_file_is_not_counted_by_the_probe(
         self, library: Path, outside: Path
     ) -> None:
-        from voicememos import PathState, probe_path
+        from memotext import PathState, probe_path
 
         make_symlink(library / "linked.m4a", outside / "other.m4a")
         assert probe_path(library).state is PathState.EMPTY
@@ -755,7 +755,7 @@ class TestLazyTranscripts:
             seen.append(kwargs)
             return real(path, **kwargs)  # type: ignore[arg-type]
 
-        monkeypatch.setattr("voicememos.cli.iter_recordings", spy)
+        monkeypatch.setattr("memotext.cli.iter_recordings", spy)
         for extra in ([], ["--json"]):
             code, out, _ = run(capsys, "list", "--library", str(library), *extra)
             assert code == 0
@@ -1043,8 +1043,8 @@ class TestContentHashWalk:
             with deadline(10.0), pytest.raises(CompositionLimitError):
                 content_hash(rec)
 
-    def test_the_documented_error_is_a_voicememos_error(self) -> None:
-        assert issubclass(CompositionLimitError, VoiceMemosError)
+    def test_the_documented_error_is_a_memotext_error(self) -> None:
+        assert issubclass(CompositionLimitError, MemotextError)
 
     def test_nesting_up_to_the_cap_is_hashed(self, library: Path) -> None:
         make_m4a(library / "ok.m4a", duration=1.0)
@@ -1164,7 +1164,7 @@ class TestUndecodableOutput:
         }
         for command in (["list"], ["show", name], ["list", "--json"]):
             done = subprocess.run(  # noqa: S603
-                [sys.executable, "-m", "voicememos", *command, "--library", str(library)],
+                [sys.executable, "-m", "memotext", *command, "--library", str(library)],
                 capture_output=True,
                 env=env,
                 check=False,
@@ -1396,7 +1396,7 @@ class TestStrictJson:
 class TestPathFallbackAndVanishingEntries:
     @pytest.fixture
     def no_descriptors(self, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr("voicememos.safeio.SUPPORTS_DIR_FD", False)
+        monkeypatch.setattr("memotext.safeio.SUPPORTS_DIR_FD", False)
 
     def test_open_dir_falls_back_to_paths(self, tmp_path: Path, no_descriptors: None) -> None:
         folder = tmp_path / "real"
