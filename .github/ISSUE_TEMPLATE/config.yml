@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/klappe-pm/memotext/blob/main/SECURITY.md
+    about: Report vulnerabilities privately as SECURITY.md describes. Do not open a public issue.
+  - name: Read the documentation
+    url: https://github.com/klappe-pm/memotext/blob/main/docs/README.md
+    about: Tutorials, how-to guides, reference and explanation.

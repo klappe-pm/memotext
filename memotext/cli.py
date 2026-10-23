@@ -1,0 +1,350 @@
+"""The `memotext` command line interface."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import sys
+import unicodedata
+from collections.abc import Iterable, Sequence
+from dataclasses import replace
+from pathlib import Path
+
+from memotext import __version__
+from memotext.discovery import PathState, find_library, probe_library
+from memotext.errors import LibraryBlockedError, LibraryNotFoundError, MemotextError
+from memotext.recording import Recording, iter_recordings, local_time, read_transcript
+from memotext.textsafe import printable
+
+EXIT_OK = 0
+EXIT_ERROR = 1
+EXIT_BROKEN_PIPE = 141
+"""128 plus SIGPIPE: the status a shell reports for a command whose reader closed the pipe."""
+
+FULL_DISK_ACCESS_HINT = (
+    "Grant Full Disk Access to the terminal or interpreter that runs this command: "
+    "System Settings, Privacy and Security, Full Disk Access."
+)
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    common = argparse.ArgumentParser(add_help=False)
+    common.add_argument(
+        "--spotlight",
+        action="store_true",
+        help="when no known path is readable, also ask Spotlight (macOS only)",
+    )
+
+    parser = argparse.ArgumentParser(
+        prog="memotext",
+        description="Read the Apple Voice Memos library: list recordings and show transcripts.",
+    )
+    parser.add_argument("--version", action="version", version=f"memotext {__version__}")
+    sub = parser.add_subparsers(dest="command", required=True)
+
+    probe = sub.add_parser(
+        "probe", parents=[common], help="report the state of each known recordings folder"
+    )
+    probe.add_argument("--json", action="store_true", help="print machine readable JSON")
+
+    listing = sub.add_parser("list", parents=[common], help="list recordings, newest first")
+    listing.add_argument("--library", metavar="PATH", help="use this recordings folder")
+    listing.add_argument("--json", action="store_true", help="print machine readable JSON")
+
+    show = sub.add_parser("show", parents=[common], help="show one recording and its transcript")
+    show.add_argument("id", help="a recording id, or a prefix that matches exactly one")
+    show.add_argument("--library", metavar="PATH", help="use this recordings folder")
+    show.add_argument("--json", action="store_true", help="print machine readable JSON")
+    return parser
+
+
+def _format_duration(seconds: float | None) -> str:
+    if seconds is None:
+        return "unknown"
+    total = round(seconds)
+    hours, rest = divmod(total, 3600)
+    minutes, secs = divmod(rest, 60)
+    if hours:
+        return f"{hours}:{minutes:02d}:{secs:02d}"
+    return f"{minutes}:{secs:02d}"
+
+
+def _format_recorded(recording: Recording) -> str:
+    return local_time(recording.recorded_at).strftime("%Y-%m-%d %H:%M")
+
+
+def _shorten(text: str, limit: int) -> str:
+    return text if len(text) <= limit else text[: limit - 3] + "..."
+
+
+def _strict(value: object) -> object:
+    """Return `value` with every lone surrogate in a string replaced by U+FFFD.
+
+    A file name that is not valid UTF-8 reaches Python as a string with lone surrogates. JSON
+    written with `\\udcXX` escapes for them parses in Python but is rejected by strict decoders.
+    """
+    if isinstance(value, str):
+        return "".join("\ufffd" if 0xD800 <= ord(ch) <= 0xDFFF else ch for ch in value)
+    if isinstance(value, list):
+        return [_strict(item) for item in value]
+    if isinstance(value, dict):
+        return {_strict(key): _strict(item) for key, item in value.items()}
+    return value
+
+
+def _dump(data: object) -> str:
+    """Serialise to JSON that every parser accepts.
+
+    No NaN or Infinity, ASCII only, and no lone surrogate: a string that holds one has it replaced
+    by U+FFFD, and a recording id that was not valid UTF-8 carries `id_bytes_hex` with its bytes.
+    """
+    return json.dumps(_strict(data), indent=2, allow_nan=False)
+
+
+def _warn_skipped(audio: Path, error: OSError) -> None:
+    reason = error.strerror or type(error).__name__
+    print(
+        f"memotext: warning: skipped {printable(str(audio))}: {printable(reason)}",
+        file=sys.stderr,
+    )
+
+
+def _display_key(recording_id: str) -> str:
+    """The form an id prints in, with every kind of space as a plain space and no trailing space."""
+    shown = printable(unicodedata.normalize("NFC", recording_id))
+    return "".join(" " if ch.isspace() else ch for ch in shown).rstrip()
+
+
+def _look_alikes(ids: Iterable[str]) -> set[str]:
+    """Return the ids that print the same as another id.
+
+    Two ids are grouped when their displayed forms are equal, that is when `printable` gives the
+    same text for both once each is put in Unicode form NFC, every space separator (a no-break
+    space, an ideographic space and the rest) is read as a plain space, and trailing space is
+    dropped. That catches a file system that keeps names as written and holds a precomposed and
+    a decomposed spelling of one word side by side, two names that are not valid UTF-8 and differ
+    only in the bad byte, which both print with a question mark, and two names that differ only
+    in a space that `printable` leaves alone, which a table shows as the same text. A table that
+    showed such ids as they print would hide that they differ.
+    """
+    groups: dict[str, list[str]] = {}
+    for recording_id in ids:
+        groups.setdefault(_display_key(recording_id), []).append(recording_id)
+    return {recording_id for group in groups.values() if len(group) > 1 for recording_id in group}
+
+
+def _label(recording_id: str, look_alikes: set[str]) -> str:
+    """The id as shown in a table or message: as `ascii()` when another id looks identical."""
+    return ascii(recording_id) if recording_id in look_alikes else recording_id
+
+
+def _table(headers: Sequence[str], rows: Sequence[Sequence[str]]) -> str:
+    """Format a table. Every cell is escaped first, so a cell can never hold a line break."""
+    rows = [[printable(cell) for cell in row] for row in rows]
+    widths = [len(h) for h in headers]
+    for row in rows:
+        widths = [max(w, len(cell)) for w, cell in zip(widths, row, strict=True)]
+    lines = [
+        "  ".join(cell.ljust(w) for cell, w in zip(row, widths, strict=True)).rstrip()
+        for row in (headers, *rows)
+    ]
+    return "\n".join(lines)
+
+
+def _chosen_by_spotlight(found: Path) -> bool:
+    """True if `found` is not one of the known paths, so only Spotlight can have chosen it."""
+    return found not in {probe.path for probe in probe_library()}
+
+
+def _library_for(explicit: str | None, spotlight: bool) -> Path:
+    """Resolve the folder to read, or raise a library error that says why none was found."""
+    if explicit:
+        return Path(explicit).expanduser()
+    found = find_library(spotlight=spotlight)
+    if found is not None:
+        if spotlight and _chosen_by_spotlight(found):
+            print(
+                f"memotext: using {printable(str(found))} (found by Spotlight)",
+                file=sys.stderr,
+            )
+        return found
+    blocked = [p for p in probe_library() if p.state is PathState.BLOCKED]
+    if blocked:
+        names = ", ".join(str(p.path) for p in blocked)
+        raise LibraryBlockedError(
+            f"found a recordings folder that cannot be listed: {names}. {FULL_DISK_ACCESS_HINT}"
+        )
+    raise LibraryNotFoundError(
+        "no readable Voice Memos folder found. Run `memotext probe` to see each path checked, "
+        "or pass --library PATH."
+    )
+
+
+def _cmd_probe(args: argparse.Namespace) -> int:
+    probes = probe_library()
+    found = find_library(spotlight=args.spotlight)
+    by_spotlight = found is not None and found not in {p.path for p in probes}
+    source = None if found is None else ("spotlight" if by_spotlight else "known-path")
+    if args.json:
+        payload = {
+            "library": str(found) if found else None,
+            "library_source": source,
+            "paths": [p.to_dict() for p in probes],
+        }
+        print(_dump(payload))
+    else:
+        rows = [
+            [
+                p.state.value,
+                str(p.recording_count) if p.state is PathState.READABLE else "",
+                str(p.path),
+            ]
+            for p in probes
+        ]
+        print(_table(("STATE", "RECORDINGS", "PATH"), rows))
+        if any(p.state is PathState.BLOCKED for p in probes):
+            print(f"\n{FULL_DISK_ACCESS_HINT}")
+        if found:
+            note = " (chosen by Spotlight)" if by_spotlight else ""
+            print(f"\nlibrary: {printable(str(found))}{note}")
+        else:
+            print("\nlibrary: none readable")
+    return EXIT_OK if found else EXIT_ERROR
+
+
+def _cmd_list(args: argparse.Namespace) -> int:
+    library = _library_for(args.library, args.spotlight)
+    # Transcript text is never needed for a list, so it is not kept: a library of long
+    # transcripts would otherwise sit in memory until the table is printed.
+    recordings = sorted(
+        iter_recordings(library, transcripts=False, on_skip=_warn_skipped),
+        key=lambda r: r.recorded_at,
+        reverse=True,
+    )
+    if args.json:
+        data = [r.to_dict(include_transcript=False) for r in recordings]
+        print(_dump(data))
+        return EXIT_OK
+    look_alikes = _look_alikes(r.id for r in recordings)
+    rows = [
+        [
+            _label(r.id, look_alikes),
+            _format_recorded(r),
+            _format_duration(r.duration_seconds),
+            r.transcript_source or "none",
+            _shorten(r.title, 40),
+        ]
+        for r in recordings
+    ]
+    print(_table(("ID", "RECORDED", "DURATION", "TRANSCRIPT", "TITLE"), rows))
+    return EXIT_OK
+
+
+def _match(recordings: list[Recording], wanted: str) -> Recording:
+    for recording in recordings:
+        if recording.id == wanted:
+            return recording
+    prefixed = [r for r in recordings if r.id.startswith(wanted)]
+    if len(prefixed) == 1:
+        return prefixed[0]
+    if prefixed:
+        look_alikes = _look_alikes(r.id for r in recordings)
+        ids = ", ".join(_label(r.id, look_alikes) for r in prefixed)
+        raise MemotextError(f"id {wanted!r} is ambiguous, it matches: {ids}")
+    raise MemotextError(f"no recording with id {wanted!r}")
+
+
+def _cmd_show(args: argparse.Namespace) -> int:
+    library = _library_for(args.library, args.spotlight)
+    found = _match(
+        list(iter_recordings(library, transcripts=False, on_skip=_warn_skipped)), args.id
+    )
+    transcript = read_transcript(found)
+    recording = replace(
+        found,
+        transcript_text=transcript.text if transcript else None,
+        # The listing only detected the source; reading the transcript is what settles it.
+        transcript_source=transcript.source if transcript else None,
+    )
+    if args.json:
+        print(_dump(recording.to_dict()))
+        return EXIT_OK
+    recorded = local_time(recording.recorded_at).isoformat(timespec="seconds")
+    print(f"title: {printable(recording.title)}")
+    print(f"id: {printable(recording.id)}")
+    print(f"recorded: {recorded}")
+    print(f"duration: {_format_duration(recording.duration_seconds)}")
+    print(f"audio: {printable(str(recording.audio_path))}")
+    print(f"composition: {printable(str(recording.composition_path or 'none'))}")
+    print(f"transcript source: {recording.transcript_source or 'none'}")
+    if recording.transcript_text:
+        print(f"\n{printable(recording.transcript_text, keep_newlines=True)}")
+    return EXIT_OK
+
+
+_COMMANDS = {"probe": _cmd_probe, "list": _cmd_list, "show": _cmd_show}
+
+
+def _make_streams_lossless() -> None:
+    """Make standard output and error print what they cannot encode as a backslash escape.
+
+    A terminal or a pipe set to ASCII, or to any encoding that lacks a character in a title or a
+    file name, would otherwise raise `UnicodeEncodeError` in the middle of a table.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(errors="backslashreplace")
+        except (ValueError, OSError):
+            continue
+
+
+def _silence_stdout() -> None:
+    """Point standard output at the null device after the reader closed the pipe.
+
+    This is the pattern the Python documentation gives for `BrokenPipeError`. The buffered output
+    that could not be written is then flushed to the null device when the interpreter exits,
+    instead of raising a second time with a message on standard error.
+    """
+    try:
+        devnull = os.open(os.devnull, os.O_WRONLY)
+        try:
+            os.dup2(devnull, sys.stdout.fileno())
+        finally:
+            os.close(devnull)
+    except (AttributeError, OSError, ValueError):
+        # A stream without a descriptor (one a caller replaced) has nothing to redirect.
+        pass
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """Run the command line interface and return the exit status.
+
+    Exit statuses: 0 on success, 1 when no readable library is found, a library cannot be
+    listed, or a recording id does not match, 2 for a usage error, and 141 when the reader of
+    standard output closed the pipe early (`memotext list | head -1`), which ends the command
+    without a message.
+    """
+    _make_streams_lossless()
+    args = _build_parser().parse_args(argv)
+    try:
+        status = _COMMANDS[args.command](args)
+        # Flush inside the handler: output that fits in the buffer is otherwise written, and
+        # fails, only when the interpreter exits, where nothing can handle it.
+        flush = getattr(sys.stdout, "flush", None)
+        if flush is not None:
+            flush()
+        return status
+    except BrokenPipeError:
+        _silence_stdout()
+        return EXIT_BROKEN_PIPE
+    except (MemotextError, OSError) as exc:
+        print(f"memotext: {printable(str(exc))}", file=sys.stderr)
+        return EXIT_ERROR
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
