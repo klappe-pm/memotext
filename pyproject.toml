@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[project]
+name = "memotext"
+dynamic = ["version"]
+description = "Read the Apple Voice Memos library: find recordings, list them and extract the transcripts iOS already made."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kevin Lappe" }]
+keywords = ["voice-memos", "apple", "macos", "ios", "transcript", "m4a", "audio", "cli"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Sound/Audio",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest>=9.0.3", "pytest-cov>=7"]
+lint = ["ruff", "mypy"]
+
+[project.scripts]
+memotext = "memotext.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/klappe-pm/memotext"
+Repository = "https://github.com/klappe-pm/memotext"
+Documentation = "https://github.com/klappe-pm/memotext/blob/main/docs/README.md"
+Changelog = "https://github.com/klappe-pm/memotext/blob/main/CHANGELOG.md"
+Issues = "https://github.com/klappe-pm/memotext/issues"
+
+[tool.hatch.version]
+path = "memotext/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["memotext"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/memotext",
+    "/tests",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "repo_only: reads repository files that the source distribution omits (.github, docs, the community files); skipped when they are missing",
+]
+
+[tool.coverage.run]
+source = ["memotext"]
+
+[tool.coverage.report]
+show_missing = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "W", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+files = ["memotext"]
