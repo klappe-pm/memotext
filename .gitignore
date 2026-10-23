@@ -53,3 +53,8 @@ settings.local.json
 
 # internal pages kept out of the public tree
 /docs/documentation-guide/
+
+# attribution check delivered by the local agent tooling: never tracked here
+/.github/attribution-check/
+/.github/workflows/attribution-check.yml
+/.github/workflows/attribution-check-comment.yml
