@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest a capability.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: The need
+      description: What you are trying to do and why it cannot be done today.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: An idea for how it could work
+      description: Optional. Memotext reads the library and does not transcribe, write notes or use the network, so say how the idea fits that scope.

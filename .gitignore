@@ -1,0 +1,55 @@
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# virtual environments
+.venv/
+venv/
+env/
+
+# build outputs
+build/
+dist/
+site/
+*.whl
+
+# secrets
+.env
+.env.*
+!.env.example
+settings.local.json
+
+# os
+.DS_Store
+
+# internal work product: prompts, questions, provenance, session notes and
+# any snapshot a hook writes; never published
+.docs/
+
+# editor state
+.obsidian/
+.obsidian-stage-*/
+
+# agent instruction files and runtime directories at the repository root:
+# generated per machine, never tracked here
+/AGENTS.md
+/CLAUDE.md
+/CODEX.md
+/GEMINI.md
+/OPENCODE.md
+/.claude/
+/.codex/
+/.gemini/
+/.cursor/
+/.opencode/
+/.agents/
+
+# internal pages kept out of the public tree
+/docs/documentation-guide/

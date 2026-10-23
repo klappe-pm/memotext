@@ -1,0 +1,30 @@
+name: Bug report
+description: Memotext did something other than what the documentation says.
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you ran, what you expected and what happened instead.
+      placeholder: "I ran `memotext list` and expected ..., but ..."
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Paste the command output as text. Remove anything personal, since recording ids, titles and transcripts often are, and never attach a real recording or manifest.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Memotext version
+      description: The output of `memotext --version`.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Operating system and version, and the Python version.

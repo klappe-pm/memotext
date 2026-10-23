@@ -1,0 +1,97 @@
+# Publish to PyPI through trusted publishing when a version tag is pushed.
+#
+# Three jobs, each with the least it needs:
+#   build    installs only the hash pinned build tools, checks the tag, builds the distributions.
+#   test     installs hash pinned test tools and the wheel that build made, then runs the suite.
+#   publish  needs both, runs in the "pypi" environment, and alone may request a PyPI token.
+# No PyPI token is stored anywhere.
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: tagged commit is on main
+        run: |
+          git merge-base --is-ancestor "${GITHUB_SHA}" origin/main || {
+            echo "the tagged commit ${GITHUB_SHA} is not an ancestor of origin/main"
+            exit 1
+          }
+      - name: install the build tools
+        run: python -m pip install --require-hashes -r requirements/build.txt
+      - name: tag matches version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' memotext/__init__.py)"
+          test "v${version}" = "${TAG}" || { echo "tag ${TAG} does not match version ${version}"; exit 1; }
+      - name: build
+        run: python -m build --no-isolation
+      - name: record checksums
+        run: |
+          {
+            echo '### Checksums'
+            echo
+            echo '```text'
+            sha256sum dist/*
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY}"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  test:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - name: install the test tools
+        run: python -m pip install --require-hashes -r requirements/ci.txt
+      - name: install the built wheel
+        run: python -m pip install --no-deps dist/*.whl
+      - name: put the checkout's package out of the way
+        # The tests must import the wheel that will ship, not the source tree beside them.
+        run: rm -r memotext
+      - name: the wheel is what the tests import
+        run: python -c "import pathlib, memotext; assert 'site-packages' in pathlib.Path(memotext.__file__).parts, memotext.__file__"
+      - name: test
+        run: python -m pytest -q
+
+  publish:
+    needs: [build, test]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
