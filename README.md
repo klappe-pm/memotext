@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://pypi.org/project/memotext/"><img src="https://img.shields.io/pypi/v/memotext?style=flat-square&color=3ddc84&labelColor=162233&label=PyPI" alt="PyPI version"></a>
   <a href="https://pypi.org/project/memotext/"><img src="https://img.shields.io/pypi/pyversions/memotext?style=flat-square&color=5aa9ff&labelColor=162233&label=Python" alt="Python versions"></a>
-  <a href="https://github.com/klappe-pm/memotext/releases"><img src="https://img.shields.io/github/v/release/klappe-pm/memotext?style=flat-square&color=3ddc84&labelColor=162233&label=release" alt="Latest release"></a>
+  <a href="https://github.com/klappe-pm/memotext/tags"><img src="https://img.shields.io/github/v/tag/klappe-pm/memotext?style=flat-square&color=3ddc84&labelColor=162233&label=release" alt="Latest release"></a>
   <a href="https://github.com/klappe-pm/memotext/blob/main/LICENSE"><img src="https://img.shields.io/github/license/klappe-pm/memotext?style=flat-square&color=5aa9ff&labelColor=162233&label=license" alt="MIT license"></a>
   <a href="https://github.com/klappe-pm/memotext/blob/main/pyproject.toml"><img src="https://img.shields.io/badge/dependencies-none-3ddc84?style=flat-square&labelColor=162233" alt="No runtime dependencies"></a>
   <a href="https://github.com/klappe-pm/memotext/blob/main/docs/README.md"><img src="https://img.shields.io/badge/platform-macOS-5aa9ff?style=flat-square&labelColor=162233" alt="Reads the macOS Voice Memos library"></a>
