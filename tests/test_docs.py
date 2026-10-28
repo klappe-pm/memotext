@@ -425,10 +425,10 @@ def test_the_readme_follows_the_skeleton() -> None:
     assert banner in text.split("</p>", 1)[0]
     assert 'width="760"' in text.split("</p>", 1)[0]
     assert re.search(r'<h1 align="center">[A-Z][a-z]+</h1>', text)
-    assert text.count("style=flat-square&") == 6
-    assert text.count("labelColor=162233") == 6
+    assert text.count("style=flat-square&") == 4
+    assert text.count("labelColor=162233") == 4
     colours = [re.search(r"(?:color=|-)([0-9a-f]{6})", badge) for badge in BADGE.findall(text)]
-    assert [c.group(1) for c in colours if c] == ["3ddc84", "5aa9ff"] * 3
+    assert [c.group(1) for c in colours if c] == ["3ddc84", "5aa9ff"] * 2
     order = [
         "## Why ",
         "## Installation",
