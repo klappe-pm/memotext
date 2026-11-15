@@ -32,6 +32,7 @@ settings.local.json
 # internal work product: prompts, questions, provenance, session notes and
 # any snapshot a hook writes; never published
 .docs/
+.private.git
 
 # editor state
 .obsidian/
