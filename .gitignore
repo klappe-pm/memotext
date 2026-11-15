@@ -59,3 +59,7 @@ settings.local.json
 /.github/attribution-check/
 /.github/workflows/attribution-check.yml
 /.github/workflows/attribution-check-comment.yml
+
+# private: .docs/ and other dot files live in the private repository at .private.git.
+/.docs/
+/.private.git/
